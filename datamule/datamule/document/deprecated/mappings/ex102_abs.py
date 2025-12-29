@@ -1,3 +1,5 @@
+"""EX-102 ABS mapping dictionaries (deprecated)."""
+
 # Assets dictionary mapping
 assets_dict_ex102_abs = {
     'assetNumber': 'assetNumber',
