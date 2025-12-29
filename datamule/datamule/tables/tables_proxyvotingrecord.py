@@ -1,3 +1,5 @@
+"""Proxy voting record mapping table definitions."""
+
 proxy_voting_record_dict = {
     'meetingDate': 'meetingDate',
     'accession': 'accessionNumber',
