@@ -1,9 +1,14 @@
-from functools import lru_cache
+"""Helper utilities for working with packaged metadata datasets."""
+
+from __future__ import annotations
+
 import csv
 import os
+from functools import lru_cache
+from typing import Dict, List, Optional, Sequence, Union
 
-def _load_package_csv(name):
-    """Load CSV files from package data directory"""
+def _load_package_csv(name: str) -> List[Dict[str, str]]:
+    """Load a packaged CSV dataset by name."""
     package_dir = os.path.dirname(os.path.dirname(__file__))
     csv_path = os.path.join(package_dir,"datamule", "data", f"{name}.csv")
     
@@ -16,12 +21,14 @@ def _load_package_csv(name):
     return data
     
 
-def load_package_dataset(dataset):
+def load_package_dataset(dataset: str) -> List[Dict[str, str]]:
+    """Load a supported dataset from package data."""
     if dataset =='listed_filer_metadata':
         return _load_package_csv('listed_filer_metadata')
 
 @lru_cache(maxsize=128)
-def get_cik_from_dataset(dataset_name, key, value):
+def get_cik_from_dataset(dataset_name: str, key: str, value: Union[str, int]) -> List[str]:
+    """Return CIKs from a dataset matching a given key/value pair."""
     dataset = load_package_dataset(dataset_name)
     
     if dataset_name == 'listed_filer_metadata' and key == 'ticker':
@@ -40,7 +47,7 @@ def get_cik_from_dataset(dataset_name, key, value):
     return result
 
 @lru_cache(maxsize=128)
-def get_ciks_from_metadata_filters(**kwargs):
+def get_ciks_from_metadata_filters(**kwargs: Union[str, int]) -> List[int]:
     """Get CIKs from listed_filer_metadata.csv that match all provided filters."""
     
     # Start with None to get all CIKs from first filter
@@ -65,7 +72,11 @@ def get_ciks_from_metadata_filters(**kwargs):
     
     return list(result_ciks)
 
-def _process_cik_and_metadata_filters(cik=None, ticker=None, **kwargs):
+def _process_cik_and_metadata_filters(
+    cik: Optional[Union[str, int, Sequence[Union[str, int]]]] = None,
+    ticker: Optional[Union[str, Sequence[str]]] = None,
+    **kwargs: Union[str, int],
+) -> Optional[List[int]]:
     """ 
     Helper method to process CIK, ticker, and metadata filters.
     Returns a list of CIKs after processing.
