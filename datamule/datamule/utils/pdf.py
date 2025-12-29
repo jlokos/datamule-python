@@ -1,3 +1,5 @@
+"""PDF inspection helpers."""
+
 def has_extractable_text(pdf_bytes, search_range=50000):
     """
     Check if PDF contains extractable text within first N bytes
