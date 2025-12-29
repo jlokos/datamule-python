@@ -1,4 +1,35 @@
-sdr_dict = {
+"""
+SDR (Security-based Swap Data Repository) field mappings module.
+
+This module provides field name mappings for SEC Form SDR filings, which are used
+for registration and amendment of Security-based Swap Data Repositories under
+the Securities Exchange Act of 1934.
+
+The mappings transform verbose nested field paths from the original XML/JSON
+structure into simplified, more readable field names for data processing and
+analysis.
+
+Deprecated:
+    This module is deprecated. Use the updated mappings in the non-deprecated
+    mappings package instead.
+
+Attributes:
+    sdr_dict (Dict[str, str]): A dictionary mapping original SDR form field paths
+        to simplified field names. Keys are dot-separated paths representing the
+        nested structure of form data, values are the simplified field names.
+    config_sdr (Dict[str, Dict[str, Any]]): Configuration dictionary containing
+        the XML path and field mapping for SDR form processing.
+
+Example:
+    >>> from datamule.document.deprecated.mappings.sdr import sdr_dict, config_sdr
+    >>> # Get simplified name for a field
+    >>> sdr_dict['formData_generalInfo_business_businessAddress_city']
+    'businessCity'
+"""
+
+from typing import Any, Dict
+
+sdr_dict: Dict[str, str] = {
     'formData_generalInfo_applicantCategory_applcntTypeConfFlag': 'applicantTypeConfFlag',
     'formData_generalInfo_applicantCategory_applicantType': 'applicantType',
     'formData_generalInfo_applicantCategory_applicantTypeOtherDesc': 'applicantTypeOtherDesc',
@@ -62,9 +93,9 @@ sdr_dict = {
     'headerData_submissionType': 'headerSubmissionType'
 }
 
-config_sdr = {
-   'sdr': {
-       'path': 'edgarSubmission',
-       'mapping': sdr_dict
-   }
+config_sdr: Dict[str, Dict[str, Any]] = {
+    'sdr': {
+        'path': 'edgarSubmission',
+        'mapping': sdr_dict
+    }
 }
