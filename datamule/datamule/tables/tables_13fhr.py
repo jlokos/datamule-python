@@ -1,3 +1,5 @@
+"""13F-HR cover page and header mapping table definitions."""
+
 mapping_13fhr =  {
     # Cover Page Mapping
     'formData_coverPage_reportCalendarOrQuarter': 'reportCalendarOrQuarter',
