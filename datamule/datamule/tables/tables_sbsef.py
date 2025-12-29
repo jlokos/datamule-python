@@ -1,3 +1,5 @@
+"""SBSEF (swap execution facility) mapping table definitions."""
+
 # SBSEF (Swap Execution Facility) mapping
 sbsef_dict = {
     'sbsefId': 'sbsefId',
