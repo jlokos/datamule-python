@@ -1,23 +1,30 @@
-import os
+"""Download and repackage SEC filings from the DataMule tar bucket."""
+
+from __future__ import annotations
+
 import asyncio
-import aiohttp
-from tqdm import tqdm
-import time
-import ssl
-import zstandard as zstd
 import io
 import json
-import tarfile
 import logging
+import os
+import shutil
+import ssl
+import tarfile
+import time
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
-from threading import Lock
 from os import cpu_count
+from threading import Lock
+from typing import Any, Dict, List, Optional, Sequence, Tuple
+
+import aiohttp
+import zstandard as zstd
 from secsgml.utils import calculate_documents_locations_in_tar
-from ..utils.format_accession import format_accession
+from tqdm import tqdm
+
 from ..providers.providers import SEC_FILINGS_TAR_BUCKET_ENDPOINT
+from ..utils.format_accession import format_accession
 from .datamule_lookup import datamule_lookup
-import shutil
 
 # Set up logging
 logging.basicConfig(
@@ -29,7 +36,10 @@ logger = logging.getLogger(__name__)
 
 
 class TarDownloader:
-    def __init__(self, api_key=None):
+    """Downloader for tar-archived filings stored in the DataMule bucket."""
+
+    def __init__(self, api_key: Optional[str] = None) -> None:
+        """Initialize with an optional API key."""
         self.BASE_URL = SEC_FILINGS_TAR_BUCKET_ENDPOINT
         self.CHUNK_SIZE = 2 * 1024 * 1024
         self.MAX_CONCURRENT_DOWNLOADS = 100
@@ -42,16 +52,19 @@ class TarDownloader:
         self.error_log_lock = Lock()
 
     @property
-    def api_key(self):
+    def api_key(self) -> Optional[str]:
+        """Return the API key from memory or environment."""
         return getattr(self, '_api_key', None) or os.getenv('DATAMULE_API_KEY')
 
     @api_key.setter
-    def api_key(self, value):
+    def api_key(self, value: str) -> None:
+        """Set the API key for authenticated requests."""
         if not value:
             raise ValueError("API key cannot be empty")
         self._api_key = value
 
-    def _log_error(self, output_dir, filename, error_msg):
+    def _log_error(self, output_dir: str, filename: str, error_msg: str) -> None:
+        """Append an error entry to output_dir/errors.json."""
         error_file = os.path.join(output_dir, 'errors.json')
         with self.error_log_lock:
             try:
@@ -97,7 +110,7 @@ class TarDownloader:
         filtered_metadata['documents'] = filtered_documents
         return filtered_metadata
 
-    def _parse_tar_header(self, header_bytes):
+    def _parse_tar_header(self, header_bytes: bytes) -> Optional[Dict[str, Any]]:
         """
         Parse a 512-byte tar header.
         
@@ -129,7 +142,7 @@ class TarDownloader:
         except:
             return None
 
-    def _extract_metadata_from_probe(self, probe_bytes):
+    def _extract_metadata_from_probe(self, probe_bytes: bytes) -> Tuple[bytes, Dict[str, Any], bool]:
         """
         Extract metadata from the 128KB probe.
         
@@ -182,7 +195,12 @@ class TarDownloader:
             logger.error(f"Error extracting metadata from probe: {str(e)}")
             raise
 
-    def _extract_documents_from_probe(self, probe_bytes, metadata_with_positions, keep_document_types):
+    def _extract_documents_from_probe(
+        self,
+        probe_bytes: bytes,
+        metadata_with_positions: Dict[str, Any],
+        keep_document_types: Sequence[str],
+    ) -> List[Dict[str, Any]]:
         """
         Extract documents from probe when entire tar fits in 128KB.
         
@@ -226,7 +244,11 @@ class TarDownloader:
         
         return documents
 
-    def _separate_documents_by_location(self, metadata_with_positions, keep_document_types):
+    def _separate_documents_by_location(
+        self,
+        metadata_with_positions: Dict[str, Any],
+        keep_document_types: Sequence[str],
+    ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
         """
         Separate documents into those in probe vs those beyond probe.
         
@@ -262,7 +284,11 @@ class TarDownloader:
         
         return docs_in_probe, docs_beyond_probe
 
-    def _extract_documents_from_probe_by_list(self, probe_bytes, docs_in_probe):
+    def _extract_documents_from_probe_by_list(
+        self,
+        probe_bytes: bytes,
+        docs_in_probe: Sequence[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
         """
         Extract specific documents from probe bytes.
         
@@ -302,7 +328,7 @@ class TarDownloader:
         
         return documents
 
-    def _decompress_zstd(self, compressed_content):
+    def _decompress_zstd(self, compressed_content: bytes) -> bytes:
         """Decompress zstd content using stream reader"""
         dctx = zstd.ZstdDecompressor()
         try:
@@ -323,7 +349,15 @@ class TarDownloader:
             raise
 
     class TarManager:
-        def __init__(self, output_dir, num_tar_files, max_batch_size=1024*1024*1024):
+        """Manage batch tar outputs for downloaded submissions."""
+
+        def __init__(
+            self,
+            output_dir: str,
+            num_tar_files: int,
+            max_batch_size: int = 1024 * 1024 * 1024,
+        ) -> None:
+            """Initialize tar file handles and locks."""
             self.output_dir = output_dir
             self.num_tar_files = num_tar_files
             self.max_batch_size = max_batch_size
@@ -341,10 +375,17 @@ class TarDownloader:
                 self.tar_sizes[i] = 0
                 self.tar_sequences[i] = 1
         
-        def get_tar_index(self, accession_num):
+        def get_tar_index(self, accession_num: str) -> int:
+            """Return the tar shard index for an accession."""
             return hash(accession_num) % self.num_tar_files
         
-        def write_submission(self, accession_num, metadata_content, documents):
+        def write_submission(
+            self,
+            accession_num: str,
+            metadata_content: bytes,
+            documents: Sequence[Dict[str, Any]],
+        ) -> bool:
+            """Write metadata and documents for a submission to tar."""
             tar_index = self.get_tar_index(accession_num)
             
             submission_size = len(metadata_content) + sum(len(doc['content']) for doc in documents)
@@ -382,14 +423,27 @@ class TarDownloader:
                     logger.error(f"Error writing {accession_num} to tar {tar_index}: {str(e)}")
                     return False
         
-        def close_all(self):
+        def close_all(self) -> None:
+            """Close all tar file handles."""
             for i, tar in self.tar_files.items():
                 try:
                     tar.close()
                 except Exception as e:
                     logger.error(f"Error closing tar {i}: {str(e)}")
 
-    async def download_and_process(self, session, url, semaphore, extraction_pool, tar_manager, output_dir, pbar, keep_document_types, keep_filtered_metadata):
+    async def download_and_process(
+        self,
+        session: aiohttp.ClientSession,
+        url: str,
+        semaphore: asyncio.Semaphore,
+        extraction_pool: ThreadPoolExecutor,
+        tar_manager: "TarDownloader.TarManager",
+        output_dir: str,
+        pbar: tqdm,
+        keep_document_types: Sequence[str],
+        keep_filtered_metadata: bool,
+    ) -> None:
+        """Download a tar filing and write filtered output to batch tar."""
         async with semaphore:
             filename = url.split('/')[-1]
             accession_num = filename.replace('.tar', '').split('/')[-1]
@@ -521,7 +575,15 @@ class TarDownloader:
                 self._log_error(output_dir, filename, str(e))
                 pbar.update(1)
 
-    async def process_batch(self, urls, output_dir, max_batch_size=1024*1024*1024, keep_document_types=[], keep_filtered_metadata=False):
+    async def process_batch(
+        self,
+        urls: Sequence[str],
+        output_dir: str,
+        max_batch_size: int = 1024 * 1024 * 1024,
+        keep_document_types: Sequence[str] = (),
+        keep_filtered_metadata: bool = False,
+    ) -> None:
+        """Process a batch of tar URLs."""
         os.makedirs(output_dir, exist_ok=True)
         
         num_tar_files = min(self.MAX_TAR_WORKERS, len(urls))
@@ -556,8 +618,14 @@ class TarDownloader:
         finally:
             tar_manager.close_all()
 
-    def download(self, accession_numbers, output_dir="downloads", 
-                 keep_document_types=[], max_batch_size=1024*1024*1024, keep_filtered_metadata=False):
+    def download(
+        self,
+        accession_numbers: Sequence[str],
+        output_dir: str = "downloads",
+        keep_document_types: Sequence[str] = (),
+        max_batch_size: int = 1024 * 1024 * 1024,
+        keep_filtered_metadata: bool = False,
+    ) -> None:
         """
         Download SEC filings in tar format for the given accession numbers.
         
