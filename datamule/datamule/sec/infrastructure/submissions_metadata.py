@@ -1,3 +1,5 @@
+"""Extract SEC submissions metadata into compressed CSV outputs."""
+
 import zipfile
 import os
 import json
