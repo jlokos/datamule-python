@@ -1,24 +1,31 @@
-import os
+"""Download and package SEC filings from the DataMule SGML bucket."""
+
+from __future__ import annotations
+
 import asyncio
-import aiohttp
-from tqdm import tqdm
-import time
-import shutil
-import ssl
-import zstandard as zstd
 import io
 import json
-import tarfile
 import logging
+import os
+import shutil
+import ssl
+import tarfile
+import time
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
-from queue import Queue
-from threading import Thread, Lock
 from os import cpu_count
+from queue import Queue
+from threading import Lock, Thread
+from typing import Any, Iterable, List, Optional, Sequence
+
+import aiohttp
+import zstandard as zstd
 from secsgml import parse_sgml_content_into_memory
 from secsgml.utils import bytes_to_str
-from ..utils.format_accession import format_accession
+from tqdm import tqdm
+
 from ..providers.providers import SEC_FILINGS_SGML_BUCKET_ENDPOINT
+from ..utils.format_accession import format_accession
 from .datamule_lookup import datamule_lookup
 
 # TODO could be cleaned up
@@ -33,7 +40,10 @@ logger = logging.getLogger(__name__)
 
 
 class Downloader:
-    def __init__(self, api_key=None):
+    """Download submissions and store them in batch tar archives."""
+
+    def __init__(self, api_key: Optional[str] = None) -> None:
+        """Initialize a downloader with an optional API key."""
         self.BASE_URL = SEC_FILINGS_SGML_BUCKET_ENDPOINT
         self.CHUNK_SIZE = 2 * 1024 * 1024
         self.MAX_CONCURRENT_DOWNLOADS = 10
@@ -46,25 +56,30 @@ class Downloader:
         self.loop_thread.start()
         self.async_queue = Queue()
         
-    def _run_event_loop(self):
+    def _run_event_loop(self) -> None:
+        """Run the internal event loop on a background thread."""
         asyncio.set_event_loop(self.loop)
         self.loop.run_forever()
     
-    def _run_coroutine(self, coro):
+    def _run_coroutine(self, coro: Any) -> Any:
+        """Run a coroutine on the internal event loop and return its result."""
         future = asyncio.run_coroutine_threadsafe(coro, self.loop)
         return future.result()
 
     @property
-    def api_key(self):
+    def api_key(self) -> Optional[str]:
+        """Return the API key from memory or environment."""
         return getattr(self, '_api_key', None) or os.getenv('DATAMULE_API_KEY')
 
     @api_key.setter
-    def api_key(self, value):
+    def api_key(self, value: str) -> None:
+        """Set the API key for authenticated downloads."""
         if not value:
             raise ValueError("API key cannot be empty")
         self._api_key = value
 
-    def _log_error(self, output_dir, filename, error_msg):
+    def _log_error(self, output_dir: str, filename: str, error_msg: str) -> None:
+        """Append an error entry to output_dir/errors.json."""
         error_file = os.path.join(output_dir, 'errors.json')
         try:
             if os.path.exists(error_file):
@@ -81,7 +96,15 @@ class Downloader:
             logger.error(f"Failed to log error to {error_file}: {str(e)}")
 
     class TarManager:
-        def __init__(self, output_dir, num_tar_files, max_batch_size=1024*1024*1024):
+        """Manage batch tar output files and their sizes."""
+
+        def __init__(
+            self,
+            output_dir: str,
+            num_tar_files: int,
+            max_batch_size: int = 1024 * 1024 * 1024,
+        ) -> None:
+            """Initialize tar files and locks for concurrent writes."""
             self.output_dir = output_dir
             self.num_tar_files = num_tar_files
             self.max_batch_size = max_batch_size
@@ -99,10 +122,18 @@ class Downloader:
                 self.tar_sizes[i] = 0
                 self.tar_sequences[i] = 1
         
-        def get_tar_index(self, filename):
+        def get_tar_index(self, filename: str) -> int:
+            """Return the tar shard index for a filename."""
             return hash(filename) % self.num_tar_files
         
-        def write_submission(self, filename, metadata, documents, standardize_metadata):
+        def write_submission(
+            self,
+            filename: str,
+            metadata: Any,
+            documents: Sequence[bytes],
+            standardize_metadata: bool,
+        ) -> bool:
+            """Write a submission's metadata and documents into a tar."""
             tar_index = self.get_tar_index(filename)
             accession_num = filename.split('.')[0]
             
@@ -142,7 +173,13 @@ class Downloader:
                     logger.error(f"Error writing {filename} to tar {tar_index}: {str(e)}")
                     return False
         
-        def _get_document_name(self, metadata, file_num, standardize_metadata):
+        def _get_document_name(
+            self,
+            metadata: Any,
+            file_num: int,
+            standardize_metadata: bool,
+        ) -> str:
+            """Resolve a document filename from metadata."""
             if standardize_metadata:
                 documents_key = b'documents'
                 filename_key = b'filename'
@@ -160,14 +197,25 @@ class Downloader:
                 sequence = doc_metadata.get(sequence_key, b'document')
                 return sequence.decode('utf-8') + '.txt'
         
-        def close_all(self):
+        def close_all(self) -> None:
+            """Close all tar file handles."""
             for i, tar in self.tar_files.items():
                 try:
                     tar.close()
                 except Exception as e:
                     logger.error(f"Error closing tar {i}: {str(e)}")
 
-    def decompress_and_parse_and_write(self, compressed_chunks, filename, keep_document_types, keep_filtered_metadata, standardize_metadata, tar_manager, output_dir):
+    def decompress_and_parse_and_write(
+        self,
+        compressed_chunks: Sequence[bytes],
+        filename: str,
+        keep_document_types: Sequence[str],
+        keep_filtered_metadata: bool,
+        standardize_metadata: bool,
+        tar_manager: "Downloader.TarManager",
+        output_dir: str,
+    ) -> bool:
+        """Decompress zstd content, parse SGML, and write to tar."""
         dctx = zstd.ZstdDecompressor()
         try:
             input_buffer = io.BytesIO(b''.join(compressed_chunks))
@@ -198,7 +246,17 @@ class Downloader:
             except:
                 pass
 
-    def parse_and_write_regular_file(self, chunks, filename, keep_document_types, keep_filtered_metadata, standardize_metadata, tar_manager, output_dir):
+    def parse_and_write_regular_file(
+        self,
+        chunks: Sequence[bytes],
+        filename: str,
+        keep_document_types: Sequence[str],
+        keep_filtered_metadata: bool,
+        standardize_metadata: bool,
+        tar_manager: "Downloader.TarManager",
+        output_dir: str,
+    ) -> bool:
+        """Parse raw SGML content and write to tar."""
         try:
             content = b''.join(chunks)
             
@@ -216,7 +274,20 @@ class Downloader:
             self._log_error(output_dir, filename, f"Parsing error: {str(e)}")
             return False
 
-    async def download_and_process(self, session, url, semaphore, decompression_pool, keep_document_types, keep_filtered_metadata, standardize_metadata, tar_manager, output_dir, pbar):
+    async def download_and_process(
+        self,
+        session: aiohttp.ClientSession,
+        url: str,
+        semaphore: asyncio.Semaphore,
+        decompression_pool: ThreadPoolExecutor,
+        keep_document_types: Sequence[str],
+        keep_filtered_metadata: bool,
+        standardize_metadata: bool,
+        tar_manager: "Downloader.TarManager",
+        output_dir: str,
+        pbar: tqdm,
+    ) -> None:
+        """Download a single submission and write it to batch tar."""
         async with semaphore:
             chunks = []
             filename = url.split('/')[-1]
@@ -268,7 +339,16 @@ class Downloader:
                 self._log_error(output_dir, filename, str(e))
                 pbar.update(1)
 
-    async def process_batch(self, urls, output_dir, keep_document_types=[], keep_filtered_metadata=False, standardize_metadata=True, max_batch_size=1024*1024*1024):
+    async def process_batch(
+        self,
+        urls: Sequence[str],
+        output_dir: str,
+        keep_document_types: Sequence[str] = (),
+        keep_filtered_metadata: bool = False,
+        standardize_metadata: bool = True,
+        max_batch_size: int = 1024 * 1024 * 1024,
+    ) -> None:
+        """Download and process a batch of submission URLs."""
         os.makedirs(output_dir, exist_ok=True)
         
         num_tar_files = min(self.MAX_TAR_WORKERS, len(urls))
@@ -304,9 +384,15 @@ class Downloader:
         finally:
             tar_manager.close_all()
 
-    def download(self, accession_numbers, output_dir="downloads", keep_document_types=[], 
-                 keep_filtered_metadata=False, standardize_metadata=True, 
-                 max_batch_size=1024*1024*1024):
+    def download(
+        self,
+        accession_numbers: Sequence[str],
+        output_dir: str = "downloads",
+        keep_document_types: Sequence[str] = (),
+        keep_filtered_metadata: bool = False,
+        standardize_metadata: bool = True,
+        max_batch_size: int = 1024 * 1024 * 1024,
+    ) -> None:
         """
         Download SEC filings for the given accession numbers.
         
@@ -353,14 +439,29 @@ class Downloader:
         if hasattr(self, 'loop') and self.loop.is_running():
             self.loop.call_soon_threadsafe(self.loop.stop)
 
-def download(cik=None, ticker=None, submission_type=None, filing_date=None, 
-             report_date=None, detected_time=None, contains_xbrl=None,
-             document_type=None, filename=None, sequence=None, 
-             api_key=None, output_dir="downloads", 
-             filtered_accession_numbers=None, skip_accession_numbers=None,
-             keep_document_types=[], keep_filtered_metadata=False, 
-             standardize_metadata=True, max_batch_size=1024*1024*1024,
-             accession_numbers=None, quiet=False, **kwargs):
+def download(
+    cik: Optional[str] = None,
+    ticker: Optional[str] = None,
+    submission_type: Optional[str] = None,
+    filing_date: Optional[str] = None,
+    report_date: Optional[str] = None,
+    detected_time: Optional[str] = None,
+    contains_xbrl: Optional[bool] = None,
+    document_type: Optional[str] = None,
+    filename: Optional[str] = None,
+    sequence: Optional[str] = None,
+    api_key: Optional[str] = None,
+    output_dir: str = "downloads",
+    filtered_accession_numbers: Optional[Sequence[str]] = None,
+    skip_accession_numbers: Optional[Sequence[str]] = None,
+    keep_document_types: Sequence[str] = (),
+    keep_filtered_metadata: bool = False,
+    standardize_metadata: bool = True,
+    max_batch_size: int = 1024 * 1024 * 1024,
+    accession_numbers: Optional[Sequence[str]] = None,
+    quiet: bool = False,
+    **kwargs: Any,
+) -> None:
     """
     Download SEC filings from DataMule.
     
