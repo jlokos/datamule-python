@@ -1,3 +1,5 @@
+"""N-PX form mapping table definitions."""
+
 # N-PX form mapping
 npx_dict = {
     'accession': 'accession',
