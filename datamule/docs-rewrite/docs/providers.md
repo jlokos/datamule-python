@@ -23,5 +23,4 @@ The data provided by <b>datamule</b> can be self hosted. Here are some rough gui
 
 ### Bringing the data into your own cloud
 
-If you want to ingest data into your own infrastructure (e.g. Snowflake), feel free to [contact me](johnfriedman@datamule.xyz). 
-
+If you want to ingest data into your own infrastructure (e.g. Snowflake), feel free to [contact me](mailto:johnfriedman@datamule.xyz). 
