@@ -1,3 +1,5 @@
+"""13F information table mapping dictionary (deprecated)."""
+
 # Ready for mass testing
 
 # Information Table (13F-HR Securities) mapping
