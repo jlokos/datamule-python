@@ -3,19 +3,9 @@ theme:
   name: material
 nav:
   - Home: index.md
-  - Data Providers: providers.md
-  - datamule-python:
+  - Guides:
       - Overview: datamule-python/index.md
-      - Examples: 
-          - Quickstart: datamule-python/examples/quickstart.md
-          - Products: datamule-python/examples/products.md
-          - Articles: datamule-python/examples/articles.md
-          - Tesla Risk Factor Language Score: datamule-python/examples/tesla_risk_factor_language_score.md
-          - Meta Risk Factor Semantic Drift:  datamule-python/examples/meta_risk_factor_semantic_drift.md
-          - Costco Audit Complexity: datamule-python/examples/costco_audit_complexity.md
-          - General Motors Impairment Event: datamule-python/examples/gm_impairment_event.md
-          - General Electric Covenant Breach Risk: datamule-python/examples/ge_covenant_breach_risk.md
-          - Late Filing Reasons: datamule-python/examples/late_filing_reasons.md
+      - Data Providers: providers.md
       - Setting a Data Provider: datamule-python/data_provider.md
       - Package Data: datamule-python/package_data.md
       - Datasets: datamule-python/datasets.md
@@ -25,7 +15,7 @@ nav:
           - Portfolio: datamule-python/portfolio/portfolio.md
           - Submission: datamule-python/portfolio/submission.md
           - Document: datamule-python/portfolio/document.md
-          - Tables: 
+          - Tables:
               - Tables: datamule-python/portfolio/tables/tables.md
               - Table Types: datamule-python/portfolio/tables/types.md
       - Sheet: datamule-python/sheet/sheet.md
@@ -33,9 +23,20 @@ nav:
       - Book: datamule-python/book/book.md
       - Config: datamule-python/config/config.md
       - Filings Constructor: datamule-python/filings_constructor/filings_constructor.md
-      - Utils: 
+      - Utils:
           - 'CIK Filtering': datamule-python/utils/_process_cik_and_metadata_filters.md
-          - 'Convenient Functions': 'datamule-python/utils/convenience.md' 
+          - 'Convenient Functions': 'datamule-python/utils/convenience.md'
+  - Examples:
+      - Quickstart: datamule-python/examples/quickstart.md
+      - Products: datamule-python/examples/products.md
+      - Articles: datamule-python/examples/articles.md
+      - Tesla Risk Factor Language Score: datamule-python/examples/tesla_risk_factor_language_score.md
+      - Meta Risk Factor Semantic Drift: datamule-python/examples/meta_risk_factor_semantic_drift.md
+      - Costco Audit Complexity: datamule-python/examples/costco_audit_complexity.md
+      - General Motors Impairment Event: datamule-python/examples/gm_impairment_event.md
+      - General Electric Covenant Breach Risk: datamule-python/examples/ge_covenant_breach_risk.md
+      - Late Filing Reasons: datamule-python/examples/late_filing_reasons.md
+  - API Reference: reference/
 
 markdown_extensions:
   - pymdownx.superfences
@@ -46,6 +47,11 @@ markdown_extensions:
 
 plugins:
   - search
+  - gen-files:
+      scripts:
+        - scripts/gen_ref_pages.py
+  - literate-nav:
+      nav_file: SUMMARY.md
   - mkdocstrings:
       handlers:
         python:
