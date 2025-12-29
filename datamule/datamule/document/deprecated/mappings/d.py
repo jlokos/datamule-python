@@ -1,6 +1,31 @@
-issuer_list_d_dict = {
+"""Field mapping dictionaries for SEC Form D document parsing.
+
+This module contains mapping dictionaries that translate internal field names
+from SEC Form D filings to standardized output field names. These mappings
+are used during document parsing to normalize field names across different
+sections of Form D filings.
+
+Form D is used by companies to file a notice of an exempt offering of securities
+with the SEC under Regulation D.
+
+Note:
+    This module is deprecated. New code should use updated mapping implementations.
+
+Dictionaries:
+    issuer_list_d_dict: Maps issuer information fields from Form D.
+    metadata_d_dict: Maps submission metadata fields.
+    offering_data_d_dict: Maps offering details and sales compensation fields.
+    primary_issuer_d_dict: Maps primary issuer entity information.
+    related_persons_d_dict: Maps related person information fields.
+"""
+
+from typing import Dict
+
+# Mapping for issuer list fields in Form D filings.
+# Maps nested issuer fields (e.g., address, incorporation year) to flat output names.
+issuer_list_d_dict: Dict[str, str] = {
     'issuer_issuerAddress_street1': 'issuerStreet1',
-    'issuer_cik': 'issuerCik', 
+    'issuer_cik': 'issuerCik',
     'issuer_issuerAddress_stateOrCountryDescription': 'issuerStateOrCountryDescription',
     'issuer_issuerAddress_zipCode': 'issuerZipCode',
     'issuer_issuerPhoneNumber': 'issuerPhoneNumber',
@@ -19,13 +44,19 @@ issuer_list_d_dict = {
     'issuer_issuerAddress_city': 'issuerCity'
 }
 
-metadata_d_dict = {
-"testOrLive" : "testOrLive",
-"schemaVersion" : "schemaVersion",
-"accession" : "accession",
-"submissionType" : "submissionType",
+# Mapping for submission metadata fields in Form D filings.
+# Contains basic filing information like submission type and schema version.
+metadata_d_dict: Dict[str, str] = {
+    "testOrLive": "testOrLive",
+    "schemaVersion": "schemaVersion",
+    "accession": "accession",
+    "submissionType": "submissionType",
 }
-offering_data_d_dict = {
+
+# Mapping for offering data fields in Form D filings.
+# Contains extensive mappings for sales compensation, offering amounts,
+# securities types, investor information, and signature blocks.
+offering_data_d_dict: Dict[str, str] = {
     'salesCompensationList_recipient_foreignSolicitation': 'foreignSolicitation',
     'typeOfFiling_dateOfFirstSale_yetToOccur': 'dateOfFirstSaleYetToOccur',
     'industryGroup_investmentFundInfo_is40Act': 'is40Act',
@@ -85,7 +116,10 @@ offering_data_d_dict = {
     'salesCompensationList_recipient_recipientName': 'recipientName',
     'durationOfOffering_moreThanOneYear': 'moreThanOneYear'
 }
-primary_issuer_d_dict = {
+
+# Mapping for primary issuer fields in Form D filings.
+# Maps entity details including name, address, incorporation, and previous names.
+primary_issuer_d_dict: Dict[str, str] = {
     'yearOfInc_withinFiveYears': 'yearOfIncWithinFiveYears',
     'entityTypeOtherDesc': 'entityTypeOtherDesc',
     'jurisdictionOfInc': 'jurisdictionOfInc',
@@ -109,7 +143,9 @@ primary_issuer_d_dict = {
     'yearOfInc_overFiveYears': 'yearOfIncOverFiveYears'
 }
 
-related_persons_d_dict = {
+# Mapping for related persons fields in Form D filings.
+# Maps person name, address, and relationship information for related parties.
+related_persons_d_dict: Dict[str, str] = {
     'relatedPersonInfo_relatedPersonAddress_stateOrCountry': 'relatedPersonStateOrCountry',
     'relatedPersonInfo_relatedPersonRelationshipList_relationship': 'relatedPersonRelationship',
     'relatedPersonInfo_relationshipClarification': 'relationshipClarification',
