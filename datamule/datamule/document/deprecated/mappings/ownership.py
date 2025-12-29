@@ -1,7 +1,56 @@
-# Ready for mass testing
+"""
+Field mappings for SEC ownership filings (Forms 3, 4, and 5).
+
+This module provides dictionaries that map nested XML field paths from SEC ownership
+filings to simplified, flattened field names. These mappings are used to transform
+the hierarchical structure of SEC EDGAR ownership documents into a more accessible
+flat structure for data processing and analysis.
+
+The module defines mappings for the following ownership filing components:
+
+- **Non-derivative transactions**: Stock purchases, sales, and other non-derivative
+  security transactions reported in Table I of Forms 4 and 5.
+- **Derivative transactions**: Options, warrants, and other derivative security
+  transactions reported in Table II of Forms 4 and 5.
+- **Non-derivative holdings**: Current stock holdings reported in Forms 3, 4, and 5.
+- **Derivative holdings**: Current derivative security holdings.
+- **Reporting owner**: Information about the insider filing the report, including
+  their relationship to the issuer (director, officer, 10% owner, etc.).
+- **Metadata**: Filing-level information such as period of report, issuer details,
+  document type, and remarks.
+- **Owner signature**: Signature information for the filing.
+
+Note:
+    This module is deprecated. Use the updated mappings in the parent package.
+
+Example:
+    The mappings transform nested field paths like::
+
+        'transactionAmounts_transactionShares_value'
+
+    Into simplified names like::
+
+        'transactionShares'
+
+Attributes:
+    non_derivative_transaction_ownership_dict (dict[str, str]): Maps nested field
+        paths to simplified names for non-derivative transactions.
+    derivative_transaction_ownership_dict (dict[str, str]): Maps nested field
+        paths to simplified names for derivative transactions.
+    non_derivative_holding_ownership_dict (dict[str, str]): Maps nested field
+        paths to simplified names for non-derivative holdings.
+    derivative_holding_ownership_dict (dict[str, str]): Maps nested field
+        paths to simplified names for derivative holdings.
+    reporting_owner_ownership_dict (dict[str, str]): Maps nested field
+        paths to simplified names for reporting owner information.
+    metadata_ownership_dict (dict[str, str]): Maps nested field paths to
+        simplified names for filing metadata.
+    owner_signature_ownership_dict (dict[str, str]): Maps nested field paths
+        to simplified names for owner signature information.
+"""
 
 # Non-derivative transaction ownership mapping
-non_derivative_transaction_ownership_dict = {
+non_derivative_transaction_ownership_dict: dict[str, str] = {
     'securityTitle_value': 'securityTitle',
     'securityTitle_footnote': 'securityTitleFootnote',
     'transactionDate_value': 'transactionDate',
@@ -31,7 +80,7 @@ non_derivative_transaction_ownership_dict = {
 }
 
 # Derivative transaction ownership mapping
-derivative_transaction_ownership_dict = {
+derivative_transaction_ownership_dict: dict[str, str] = {
     'securityTitle_value': 'securityTitle',
     'securityTitle_footnote': 'securityTitleFootnote',
     'conversionOrExercisePrice_value': 'conversionOrExercisePrice',
@@ -75,7 +124,7 @@ derivative_transaction_ownership_dict = {
 }
 
 # Non-derivative holding ownership mapping
-non_derivative_holding_ownership_dict = {
+non_derivative_holding_ownership_dict: dict[str, str] = {
     'securityTitle_value': 'securityTitle',
     'securityTitle_footnote': 'securityTitleFootnote',
     'postTransactionAmounts_sharesOwnedFollowingTransaction_value': 'sharesOwnedFollowingTransaction',
@@ -91,7 +140,7 @@ non_derivative_holding_ownership_dict = {
 }
 
 # Derivative holding ownership mapping
-derivative_holding_ownership_dict = {
+derivative_holding_ownership_dict: dict[str, str] = {
     'securityTitle_value': 'securityTitle',
     'securityTitle_footnote': 'securityTitleFootnote',
     'conversionOrExercisePrice_value': 'conversionOrExercisePrice',
@@ -119,7 +168,7 @@ derivative_holding_ownership_dict = {
 }
 
 # Reporting owner ownership mapping
-reporting_owner_ownership_dict = {
+reporting_owner_ownership_dict: dict[str, str] = {
     'reportingOwnerAddress_rptOwnerCity': 'rptOwnerCity',
     'reportingOwnerAddress_rptOwnerState': 'rptOwnerState',
     'reportingOwnerAddress_rptOwnerStateDescription': 'rptOwnerStateDescription',
@@ -137,7 +186,7 @@ reporting_owner_ownership_dict = {
 }
 
 # Metadata ownership mapping
-metadata_ownership_dict = {
+metadata_ownership_dict: dict[str, str] = {
     'periodOfReport': 'periodOfReport',
     'issuer_issuerCik': 'issuerCik',
     'issuer_issuerName': 'issuerName',
@@ -156,7 +205,7 @@ metadata_ownership_dict = {
 }
 
 # Owner signature ownership mapping
-owner_signature_ownership_dict = {
+owner_signature_ownership_dict: dict[str, str] = {
     'signatureName': 'signatureName',
     'signatureDate': 'signatureDate'
 }
