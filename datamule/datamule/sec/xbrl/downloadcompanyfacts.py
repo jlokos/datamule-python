@@ -1,9 +1,15 @@
-import os
+"""Export SEC company facts data to CSV."""
+
+from __future__ import annotations
+
 import csv
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Sequence, Union
+
 from .streamcompanyfacts import stream_company_facts
 
-def process_company_data(data, output_path):
+def process_company_data(data: Dict[str, Any], output_path: Path) -> bool:
+    """Write company facts data to a CSV file for a single company."""
     # Check for errors in data
     if data and 'error' in data:
         print(f"Error processing CIK {data.get('cik')}: {data.get('error')}")
@@ -57,7 +63,12 @@ def process_company_data(data, output_path):
     
     return True
 
-def download_company_facts(cik, output_dir, requests_per_second=5):
+def download_company_facts(
+    cik: Union[str, int, Sequence[Union[str, int]]],
+    output_dir: Union[str, Path],
+    requests_per_second: int = 5,
+) -> bool:
+    """Download company facts and write CSV files to the output directory."""
     # Create output directory if it doesn't exist
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
@@ -65,7 +76,8 @@ def download_company_facts(cik, output_dir, requests_per_second=5):
     # Handle both single CIK and list
     if isinstance(cik, list):
         # Define callback to process the data for each CIK
-        def callback(data):
+        def callback(data: Dict[str, Any]) -> None:
+            """Process each company facts response into a CSV file."""
             process_company_data(data, output_path)
         
         # Process all CIKs in parallel
