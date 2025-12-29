@@ -1,3 +1,5 @@
+"""24F-2NT mapping dictionaries (deprecated)."""
+
 # Metadata 24F-2NT mapping
 metadata_24f_2nt_dict = {
     'filerInfo_filer_fileNumber': 'fileNumber',
