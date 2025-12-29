@@ -1,3 +1,9 @@
+"""Lookup accession numbers from DataMule archive indexes."""
+
+from __future__ import annotations
+
+from typing import Any, Dict, List, Optional, Sequence, Union
+
 from ..sheet.sheet import Sheet
 from ..utils.format_accession import format_accession
 
@@ -31,11 +37,25 @@ def _filters(accession_numbers, filtered_accession_numbers=None, skip_accession_
     return accession_numbers
 
     
-def datamule_lookup(cik=None, ticker=None, submission_type=None, filing_date=None, 
-                   report_date=None, detected_time=None,
-                   contains_xbrl=None, document_type=None, filename=None, 
-                   sequence=None, quiet=False, api_key=None,filtered_accession_numbers=None,
-                   skip_accession_numbers= None, provider='datamule-tar', **kwargs):
+def datamule_lookup(
+    cik: Optional[Union[str, int, Sequence[Union[str, int]]]] = None,
+    ticker: Optional[Union[str, Sequence[str]]] = None,
+    submission_type: Optional[str] = None,
+    filing_date: Optional[Union[str, Sequence[str]]] = None,
+    report_date: Optional[Union[str, Sequence[str]]] = None,
+    detected_time: Optional[Union[str, Sequence[str]]] = None,
+    contains_xbrl: Optional[bool] = None,
+    document_type: Optional[str] = None,
+    filename: Optional[str] = None,
+    sequence: Optional[str] = None,
+    quiet: bool = False,
+    api_key: Optional[str] = None,
+    filtered_accession_numbers: Optional[Sequence[str]] = None,
+    skip_accession_numbers: Optional[Sequence[str]] = None,
+    provider: str = 'datamule-tar',
+    **kwargs: Any,
+) -> List[Any]:
+    """Return accession numbers matching the provided filters."""
     
     lookup_args = {}
     
