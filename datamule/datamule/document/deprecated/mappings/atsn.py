@@ -1,3 +1,5 @@
+"""ATS-N mapping dictionaries (deprecated)."""
+
 # ATS-N metadata mapping
 metadata_ats_dict = {
     'filerInfo_filer_filerCredentials_ccc': 'filerCcc',
