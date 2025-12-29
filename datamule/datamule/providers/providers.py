@@ -1,3 +1,5 @@
+"""Service endpoint defaults for Datamule providers."""
+
 # TODO
 # make it easy for people to bring their own cloud
 
