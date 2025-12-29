@@ -1,12 +1,21 @@
+"""Query the SEC EFTS (full-text search) API with rate limiting."""
+
+from __future__ import annotations
+
 import asyncio
-import aiohttp
 from datetime import datetime
+from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple, Union
 from urllib.parse import urlencode
+
+import aiohttp
 from tqdm import tqdm
-from ..utils import RetryException, PreciseRateLimiter, RateMonitor, headers
+
+from ..utils import PreciseRateLimiter, RateMonitor, RetryException, headers
 
 class EFTSQuery:
-    def __init__(self, requests_per_second=5.0, quiet=False):
+    """Client for querying SEC EFTS and streaming results."""
+
+    def __init__(self, requests_per_second: float = 5.0, quiet: bool = False) -> None:
         self.base_url = "https://efts.sec.gov/LATEST/search-index"
         self.headers = headers
         self.limiter = PreciseRateLimiter(requests_per_second)
@@ -26,18 +35,21 @@ class EFTSQuery:
         self.processed_doc_count = 0  # Track how many documents we've processed
         self.original_forms = []  # Track original form request before adding exclusions
         
-    def update_progress_description(self):
+    def update_progress_description(self) -> None:
+        """Update the progress bar with current rate metrics."""
         if self.pbar:
             reqs_per_sec, mb_per_sec = self.rate_monitor.get_current_rates()
             self.pbar.set_description(
                 f"Querying documents [Rate: {reqs_per_sec}/s | {mb_per_sec} MB/s]"
             )
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> "EFTSQuery":
+        """Open an aiohttp session for EFTS queries."""
         self.session = aiohttp.ClientSession(headers=self.headers)
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+        """Close the aiohttp session."""
         if self.session:
             await self.session.close()
             self.session = None
@@ -116,7 +128,14 @@ class EFTSQuery:
         # No exclusions for amendment forms
         return []
 
-    def _prepare_params(self, cik=None, submission_type=None, filing_date=None, location=None):
+    def _prepare_params(
+        self,
+        cik: Optional[Union[str, int, Sequence[Union[str, int]]]] = None,
+        submission_type: Optional[Union[str, Sequence[str]]] = None,
+        filing_date: Optional[Union[str, Sequence[str], Tuple[str, str]]] = None,
+        location: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Build EFTS query parameters from filters."""
         params = {}
         
         # Handle CIK
@@ -178,7 +197,8 @@ class EFTSQuery:
             
         return params
 
-    def _get_query_description(self, params):
+    def _get_query_description(self, params: Dict[str, Any]) -> str:
+        """Return a human-readable description of query parameters."""
         parts = []
         
         if 'ciks' in params:
@@ -195,7 +215,8 @@ class EFTSQuery:
             
         return ", ".join(parts)
 
-    async def _fetch_json(self, url):
+    async def _fetch_json(self, url: str) -> Dict[str, Any]:
+        """Fetch JSON from the EFTS API with rate limiting."""
         if not self.quiet:
             print(f"Fetching {url}...")
         async with self.connection_semaphore:
@@ -214,7 +235,8 @@ class EFTSQuery:
                         raise RetryException(url)
                     raise
 
-    async def _fetch_worker(self):
+    async def _fetch_worker(self) -> None:
+        """Worker that fetches queued EFTS pages."""
         while True:
             try:
                 params, from_val, size_val, callback = await self.fetch_queue.get()
@@ -248,7 +270,13 @@ class EFTSQuery:
                     print(f"\nWorker error: {str(e)}")
                 self.fetch_queue.task_done()
 
-    def _split_date_range(self, start_date, end_date, num_splits=4):
+    def _split_date_range(
+        self,
+        start_date: str,
+        end_date: str,
+        num_splits: int = 4,
+    ) -> List[Tuple[str, str]]:
+        """Split a date range into evenly sized chunks."""
         start = datetime.strptime(start_date, '%Y-%m-%d')
         end = datetime.strptime(end_date, '%Y-%m-%d')
         
@@ -269,7 +297,13 @@ class EFTSQuery:
         
         return date_ranges
 
-    def _get_form_groups(self, buckets, max_count, num_groups=5):
+    def _get_form_groups(
+        self,
+        buckets: Sequence[Dict[str, Any]],
+        max_count: int,
+        num_groups: int = 5,
+    ) -> List[List[str]]:
+        """Group form buckets into balanced batches."""
         total_docs = sum(b['doc_count'] for b in buckets)
         target_per_group = total_docs / num_groups
         
@@ -292,7 +326,7 @@ class EFTSQuery:
             
         return groups
 
-    def _preserve_form_exclusions(self, form_group):
+    def _preserve_form_exclusions(self, form_group: List[str]) -> List[str]:
         """Add necessary exclusions to a form group based on form patterns"""
         result = form_group.copy()
         
@@ -307,7 +341,13 @@ class EFTSQuery:
         
         return result
 
-    def _store_page_request(self, params, total_hits, callback=None, is_initial_query=False):
+    def _store_page_request(
+        self,
+        params: Dict[str, Any],
+        total_hits: int,
+        callback: Optional[Callable[[List[Dict[str, Any]]], Any]] = None,
+        is_initial_query: bool = False,
+    ) -> None:
         """Store pages to be requested later, after planning is complete"""
         page_size = self.max_page_size
         # Cap total_hits to what we can actually fetch (max 100 pages of 100 results)
@@ -328,7 +368,7 @@ class EFTSQuery:
             from_val = page * page_size
             self.pending_page_requests.append((params.copy(), from_val, page_size, callback))
             
-    async def _test_query_size(self, params):
+    async def _test_query_size(self, params: Dict[str, Any]) -> Tuple[int, Optional[Dict[str, Any]]]:
         """Get the total number of hits for a query"""
         url = f"{self.base_url}?{urlencode(params, doseq=True)}&from=0&size=1"
         data = await self._fetch_json(url)
@@ -336,7 +376,7 @@ class EFTSQuery:
             return 0, None
         return data['hits']['total']['value'], data
 
-    def _get_total_from_buckets(self, data):
+    def _get_total_from_buckets(self, data: Dict[str, Any]) -> int:
         """Get the true total count from aggregation buckets"""
         if 'aggregations' in data and 'form_filter' in data['aggregations']:
             form_filter = data['aggregations']['form_filter']
@@ -354,7 +394,7 @@ class EFTSQuery:
             
         return 0
 
-    async def _get_split_strategy(self, data):
+    async def _get_split_strategy(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Determine how to split a query that would return more than 10000 results"""
         if 'aggregations' in data and 'form_filter' in data['aggregations']:
             form_filter = data['aggregations']['form_filter']
@@ -378,12 +418,20 @@ class EFTSQuery:
         # Default to date splitting
         return {'type': 'date', 'splits': 4}
 
-    def _get_negated_forms(self, buckets):
+    def _get_negated_forms(self, buckets: Sequence[Dict[str, Any]]) -> List[str]:
         """Generate a negated form list to capture all forms not in buckets"""
         negated_forms = [f"-{bucket['key']}" for bucket in buckets]
         return negated_forms
 
-    async def _process_negated_forms_recursive(self, base_params, negated_forms, start_date, end_date, depth=0, callback=None):
+    async def _process_negated_forms_recursive(
+        self,
+        base_params: Dict[str, Any],
+        negated_forms: List[str],
+        start_date: str,
+        end_date: str,
+        depth: int = 0,
+        callback: Optional[Callable[[List[Dict[str, Any]]], Any]] = None,
+    ) -> None:
         """Process queries for negated forms with recursive date splitting"""
         # Create params with negated forms
         params = base_params.copy()
@@ -419,7 +467,15 @@ class EFTSQuery:
                 base_params, negated_forms, sub_start, sub_end, depth + 1, callback
             )
 
-    async def _process_query_recursive(self, params, processed_forms=None, depth=0, max_depth=3, callback=None, is_initial_query=True):
+    async def _process_query_recursive(
+        self,
+        params: Dict[str, Any],
+        processed_forms: Optional[List[str]] = None,
+        depth: int = 0,
+        max_depth: int = 3,
+        callback: Optional[Callable[[List[Dict[str, Any]]], Any]] = None,
+        is_initial_query: bool = True,
+    ) -> List[str]:
         """Process a query with recursive splitting until all chunks are under 10K"""
         if processed_forms is None:
             processed_forms = []
@@ -471,7 +527,7 @@ class EFTSQuery:
             # Return processed forms to parent
             return processed_forms
 
-    async def _start_query_phase(self, callback):
+    async def _start_query_phase(self, callback: Callable[[List[Dict[str, Any]]], Any]) -> None:
         """Start the query phase after planning is complete"""
         if not self.quiet:
             print("\n--- Starting query phase ---")
@@ -481,7 +537,15 @@ class EFTSQuery:
         for params, from_val, size_val, callback in self.pending_page_requests:
             await self.fetch_queue.put((params, from_val, size_val, callback))
 
-    async def query(self, cik=None, submission_type=None, filing_date=None, location=None, callback=None, name=None):
+    async def query(
+        self,
+        cik: Optional[Union[str, int, Sequence[Union[str, int]]]] = None,
+        submission_type: Optional[Union[str, Sequence[str]]] = None,
+        filing_date: Optional[Union[str, Sequence[str], Tuple[str, str]]] = None,
+        location: Optional[str] = None,
+        callback: Optional[Callable[[List[Dict[str, Any]]], Any]] = None,
+        name: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
         """
         Query SEC filings using the EFTS API.
         
@@ -503,7 +567,8 @@ class EFTSQuery:
         all_hits = []
         
         # Collector callback to gather all hits
-        async def collect_hits(hits):
+        async def collect_hits(hits: List[Dict[str, Any]]) -> None:
+            """Collect hits and invoke the optional callback."""
             all_hits.extend(hits)
             if callback:
                 await callback(hits)
@@ -607,7 +672,16 @@ class EFTSQuery:
                 print(f"\n--- Query complete: {len(all_hits):,} submissions retrieved ---")
             return all_hits
 
-def query_efts(cik=None, submission_type=None, filing_date=None, location=None, requests_per_second=5.0, callback=None, quiet=False, name=None):
+def query_efts(
+    cik: Optional[Union[str, int, Sequence[Union[str, int]]]] = None,
+    submission_type: Optional[Union[str, Sequence[str]]] = None,
+    filing_date: Optional[Union[str, Sequence[str], Tuple[str, str]]] = None,
+    location: Optional[str] = None,
+    requests_per_second: float = 5.0,
+    callback: Optional[Callable[[List[Dict[str, Any]]], Any]] = None,
+    quiet: bool = False,
+    name: Optional[str] = None,
+) -> List[Dict[str, Any]]:
     """
     Convenience function to run a query without managing the async context.
     
@@ -631,7 +705,8 @@ def query_efts(cik=None, submission_type=None, filing_date=None, location=None, 
     To search by CIK:
         results = query_efts(cik="1318605", submission_type="10-K")
     """
-    async def run_query():
+    async def run_query() -> List[Dict[str, Any]]:
+        """Run the EFTS query in an async context."""
         query = EFTSQuery(requests_per_second=requests_per_second, quiet=quiet)
         return await query.query(cik, submission_type, filing_date, location, callback, name)
     
