@@ -1,8 +1,27 @@
+"""Dictionary management for SEC filing data analysis.
+
+This module provides functionality to download and load various reference dictionaries
+used for tagging and analyzing SEC filings. Dictionaries include name lists, financial
+identifiers (CUSIPs, ISINs, FIGIs), and sentiment word lists.
+
+Available dictionaries:
+    - ssa_baby_first_names: SSA baby first names for person identification
+    - npx_figis: Financial Instrument Global Identifiers from NPX filings
+    - npx_isins: International Securities Identification Numbers from NPX filings
+    - sc13dg_cusips: CUSIPs from Schedule 13D/G filings
+    - 13fhr_information_table_cusips: CUSIPs from 13F-HR information tables
+    - 8k_2024_persons: Person names extracted from 2024 8-K filings
+    - loughran_mcdonald: Loughran-McDonald financial sentiment word lists
+"""
+
 from pathlib import Path
+from typing import Dict, List, Optional, Set, Union
 import urllib.request
 import json
 import csv
-urls = {
+
+
+urls: Dict[str, str] = {
     "ssa_baby_first_names": "https://raw.githubusercontent.com/john-friedman/datamule-data/master/data/dictionaries/ssa_baby_first_names.txt",
     "npx_figis" : "https://raw.githubusercontent.com/john-friedman/datamule-data/master/data/dictionaries/npx_figis.txt",
     "npx_isins" : "https://raw.githubusercontent.com/john-friedman/datamule-data/master/data/dictionaries/npx_isins.txt",
@@ -13,7 +32,27 @@ urls = {
 }
 
 
-def download_dictionary(name, overwrite=False):
+def download_dictionary(name: str, overwrite: bool = False) -> None:
+    """Download a dictionary file from the remote data repository.
+
+    Downloads the specified dictionary to the local ~/.datamule/dictionaries
+    directory. If the file already exists and overwrite is False, the download
+    is skipped.
+
+    Args:
+        name: The name of the dictionary to download. Must be one of the keys
+            in the `urls` dictionary (e.g., 'ssa_baby_first_names', 'npx_figis').
+        overwrite: If True, download the file even if it already exists locally.
+            Defaults to False.
+
+    Raises:
+        KeyError: If the dictionary name is not found in the `urls` dictionary.
+        urllib.error.URLError: If the download fails due to network issues.
+
+    Example:
+        >>> download_dictionary('ssa_baby_first_names')
+        Downloading ssa_baby_first_names dictionary to ~/.datamule/dictionaries/ssa_baby_first_names.txt
+    """
     url = urls[name]
     
     # Create dictionaries directory in datamule folder
@@ -41,7 +80,39 @@ def download_dictionary(name, overwrite=False):
     urllib.request.urlretrieve(url, file_path)
     return
     
-def load_dictionary(name):
+def load_dictionary(name: str) -> Union[Set[str], List[str], Dict[str, Set[str]]]:
+    """Load a dictionary from the local cache, downloading if necessary.
+
+    Retrieves the specified dictionary, downloading it first if not already
+    present in the local cache. The return type depends on the dictionary:
+
+    - Most dictionaries return a set of strings (names, identifiers, etc.)
+    - '8k_2024_persons' returns a list of person data
+    - 'loughran_mcdonald' returns a dict mapping sentiment categories to word sets
+
+    Args:
+        name: The name of the dictionary to load. Must be one of:
+            'ssa_baby_first_names', 'npx_figis', 'npx_isins', 'sc13dg_cusips',
+            '13fhr_information_table_cusips', '8k_2024_persons', 'loughran_mcdonald'.
+
+    Returns:
+        The loaded dictionary data. Type varies by dictionary:
+            - Set[str]: For identifier dictionaries (CUSIPs, ISINs, FIGIs, names)
+            - List[str]: For '8k_2024_persons'
+            - Dict[str, Set[str]]: For 'loughran_mcdonald' (category -> word set)
+
+    Raises:
+        ValueError: If the dictionary name is not recognized.
+        KeyError: If the dictionary name is not found in the `urls` dictionary.
+
+    Example:
+        >>> names = load_dictionary('ssa_baby_first_names')
+        >>> 'JOHN' in names
+        True
+        >>> lm = load_dictionary('loughran_mcdonald')
+        >>> 'negative' in lm
+        True
+    """
     # Get or download the dictionary file
     dict_dir = Path.home() / ".datamule" / "dictionaries"
     
