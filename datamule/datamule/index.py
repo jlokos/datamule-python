@@ -31,8 +31,7 @@ class Index:
         
         Args:
             text_query (str): Text to search for in SEC filings.
-            start_date (str or date, optional): Start date for filing search.
-            end_date (str or date, optional): End date for filing search.
+            filing_date (str or sequence, optional): Filing date or date range filter.
             submission_type (str, optional): Type of SEC submission to search.
             cik (str, int, or list, optional): CIK(s) to filter by.
             ticker (str or list, optional): Ticker(s) to filter by.

@@ -14,7 +14,8 @@ Attributes:
 import asyncio
 import time
 from collections import deque
-from typing import Tuple
+from types import TracebackType
+from typing import Optional, Tuple, Type
 import os
 
 
@@ -105,7 +106,12 @@ class PreciseRateLimiter:
         await self.acquire()
         return self
 
-    async def __aexit__(self, exc_type, exc, tb) -> None:
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc: Optional[BaseException],
+        tb: Optional[TracebackType],
+    ) -> None:
         """
         Exit the async context manager.
 

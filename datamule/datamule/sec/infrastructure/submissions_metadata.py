@@ -10,9 +10,10 @@ import aiohttp
 import tempfile
 from tqdm import tqdm
 from datetime import datetime
+from typing import Dict, Optional
 from ..utils import headers
 
-async def download_sec_file(url, target_path):
+async def download_sec_file(url: str, target_path: str) -> str:
     """Download submissions.zip from SEC website with progress bar."""
     
     async with aiohttp.ClientSession() as session:
@@ -195,7 +196,12 @@ def write_names_to_csv(names_list, output_path):
     
     print(f"Wrote {len(names_list)} records to {output_path}")
 
-async def extract_and_process_metadata(output_dir, local_zip_path=None, sec_url="https://www.sec.gov/Archives/edgar/daily-index/bulkdata/submissions.zip", max_bytes=2000):
+async def extract_and_process_metadata(
+    output_dir: str,
+    local_zip_path: Optional[str] = None,
+    sec_url: str = "https://www.sec.gov/Archives/edgar/daily-index/bulkdata/submissions.zip",
+    max_bytes: int = 2000,
+) -> Dict[str, int]:
     """
     Extracts metadata from JSON files in a ZIP archive and writes to multiple CSV files.
     Can download the ZIP file from SEC to a temporary location if local_zip_path not provided.
@@ -388,7 +394,12 @@ async def extract_and_process_metadata(output_dir, local_zip_path=None, sec_url=
     return stats
 
 # Convenience function to run the extractor
-def process_submissions_metadata(output_dir, local_zip_path=None, sec_url="https://www.sec.gov/Archives/edgar/daily-index/bulkdata/submissions.zip", max_bytes=2000):
+def process_submissions_metadata(
+    output_dir: str,
+    local_zip_path: Optional[str] = None,
+    sec_url: str = "https://www.sec.gov/Archives/edgar/daily-index/bulkdata/submissions.zip",
+    max_bytes: int = 2000,
+) -> Dict[str, int]:
     """
     Convenience function to run the SEC Metadata Extractor.
     

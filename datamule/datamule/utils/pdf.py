@@ -1,6 +1,6 @@
 """PDF inspection helpers."""
 
-def has_extractable_text(pdf_bytes, search_range=50000):
+def has_extractable_text(pdf_bytes: bytes, search_range: int = 50000) -> bool:
     """
     Check if PDF contains extractable text within first N bytes
     Returns True if found in range, False otherwise
