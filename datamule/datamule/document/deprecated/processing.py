@@ -1,7 +1,62 @@
+"""
+Deprecated SEC filing document processing module.
+
+This module contains functions for processing various SEC filing types
+into structured tabular data. It handles conversion of nested dictionary
+structures from parsed SEC filings into flattened Table objects suitable
+for database storage or CSV export.
+
+Note:
+    This module is deprecated. Some processing functions are commented out
+    and marked as work-in-progress.
+
+Supported filing types include:
+    - Forms 3, 4, 5 (ownership filings)
+    - Form 13F-HR (institutional holdings)
+    - Form D (private placement)
+    - Schedule 13D/13G (beneficial ownership)
+    - Form 144 (notice of proposed sale)
+    - ATS-N (alternative trading systems)
+    - Various SDR (security-based swap data repository) exhibits
+    - And many others
+
+Example:
+    >>> doc = Document(data=filing_data, type="4", accession="0001234567-21-000001")
+    >>> tables = process_tabular_data(doc)
+    >>> for table in tables:
+    ...     print(table.type)
+"""
+
+from typing import Any, Dict, List, Optional, Union
+
 from .table import Table
 from warnings import warn
-def safe_get(d, keys, default=None):
-    """Safely access nested dictionary keys"""
+
+
+def safe_get(d: Dict[str, Any], keys: List[str], default: Optional[Any] = None) -> Any:
+    """Safely access nested dictionary keys.
+
+    Traverses a nested dictionary structure using a list of keys,
+    returning the value at the end of the key path or a default
+    value if any key is missing.
+
+    Args:
+        d: The dictionary to traverse.
+        keys: A list of keys representing the path to the desired value.
+        default: The value to return if any key in the path is missing.
+            Defaults to None.
+
+    Returns:
+        The value at the specified key path, or the default value if
+        the path does not exist.
+
+    Example:
+        >>> data = {'a': {'b': {'c': 1}}}
+        >>> safe_get(data, ['a', 'b', 'c'])
+        1
+        >>> safe_get(data, ['a', 'x', 'c'], default='not found')
+        'not found'
+    """
     current = d
     for key in keys:
         if isinstance(current, dict) and key in current:
@@ -11,6 +66,7 @@ def safe_get(d, keys, default=None):
     return current
 
 def process_tabular_data(self):
+    """Dispatch to deprecated processors based on document type."""
     if self.type in ["3","4","5","3/A","4/A","5/A"]:
         tables = process_ownership(self.data, self.accession)
     elif self.type in ["13F-HR", "13F-HR/A","13F-NT", "13F-NT/A"]:
@@ -89,6 +145,7 @@ def process_tabular_data(self):
     return tables
 
 def _flatten_dict(d, parent_key=''):
+    """Flatten nested dictionaries into a single-level dict."""
     items = {}
 
     if isinstance(d, list):
@@ -106,6 +163,7 @@ def _flatten_dict(d, parent_key=''):
 
 # flattens in a different way
 def flatten_dict_to_rows(d, parent_key='', sep='_'):
+    """Flatten nested dictionaries into row-oriented dicts."""
 
     if isinstance(d, list):
         # If input is a list, flatten each item and return all rows
@@ -166,6 +224,7 @@ def flatten_dict_to_rows(d, parent_key='', sep='_'):
     return rows
 
 def process_ownership(data, accession):
+    """Return tables for Forms 3/4/5 ownership filings."""
     tables = []
     if 'ownershipDocument' not in data:
         return tables
@@ -209,6 +268,7 @@ def process_ownership(data, accession):
     return tables
 
 def process_information_table(data, accession):
+    """Return tables for 13F information table filings."""
     tables = []
     information_table = safe_get(data, ['informationTable','infoTable'])
     if information_table:
@@ -216,6 +276,7 @@ def process_information_table(data, accession):
     return tables
     
 def process_13fhr(data, accession):
+    """Return tables for 13F-HR filings."""
     tables = []
     edgar_submission = safe_get(data, ['edgarSubmission'])
     if edgar_submission:
@@ -223,6 +284,7 @@ def process_13fhr(data, accession):
     return tables
 
 def process_sbsef(data, accession):
+    """Return tables for SBSEF filings."""
     tables = []
     header_data = safe_get(data, ['edgarSubmission'])
     if header_data:
@@ -230,6 +292,7 @@ def process_sbsef(data, accession):
     return tables
 
 def process_sdr_header_data(data, accession):
+    """Return tables for SDR header data filings."""
     tables = []
     edgar_submission = safe_get(data, ['edgarSubmission'])
     if edgar_submission:
@@ -237,6 +300,7 @@ def process_sdr_header_data(data, accession):
     return tables 
 
 def process_ex_99c_sdr(data, accession):
+    """Return tables for EX-99.C SDR filings."""
     tables = []
     director_governors = safe_get(data, ['directorGovernors','officer'])
     if director_governors:
@@ -244,6 +308,7 @@ def process_ex_99c_sdr(data, accession):
     return tables
 
 def process_ex_99a_summary_sdr(data, accession):
+    """Return tables for EX-99.A SDR summary filings."""
     tables = []
     controlling_persons = safe_get(data, ['controllingPersons','controlPerson'])
     if controlling_persons:
@@ -251,6 +316,7 @@ def process_ex_99a_summary_sdr(data, accession):
     return tables
 
 def process_ex_99g_summary_sdr(data, accession):
+    """Return tables for EX-99.G SDR summary filings."""
     tables = []
     affiliates = safe_get(data, ['affiliates','affiliate'])
     if affiliates:
@@ -258,6 +324,7 @@ def process_ex_99g_summary_sdr(data, accession):
     return tables
 
 def process_ex_99i_summary_sdr(data, accession):
+    """Return tables for EX-99.I SDR summary filings."""
     tables = []
     service_provider_contracts = safe_get(data, ['serviceProviderContracts','serviceProviderContract'])
     if service_provider_contracts:
@@ -265,6 +332,7 @@ def process_ex_99i_summary_sdr(data, accession):
     return tables
 
 def process_144(data, accession):
+    """Return tables for Form 144 filings."""
     tables = []
     notice_signature = safe_get(data, ['edgarSubmission', 'formData', 'noticeSignature'])
     if notice_signature:
@@ -297,6 +365,7 @@ def process_144(data, accession):
     return tables
 
 def process_24f2nt(data, accession):
+    """Return tables for Form 24F-2NT filings."""
     tables = []
 
     header_data = safe_get(data, ['edgarSubmission', 'headerData'])
@@ -323,6 +392,7 @@ def process_24f2nt(data, accession):
     return tables
 
 def process_25nse(data, accession):
+    """Return tables for Form 25-NSE filings."""
     tables = []
     notification = safe_get(data, ['notificationOfRemoval'])
     if notification:
@@ -330,6 +400,7 @@ def process_25nse(data, accession):
     return tables
 
 def process_ats(data, accession):
+    """Return tables for ATS-N filings."""
     tables = []
     header_data = safe_get(data, ['edgarSubmission', 'headerData'])
     if header_data:
@@ -382,6 +453,7 @@ def process_ats(data, accession):
 #     return tables
 
 def process_cfportal(data, accession):
+    """Return tables for CFPORTAL filings."""
     tables = []
     header_data = safe_get(data, ['edgarSubmission', 'headerData'])
     if header_data:
@@ -417,6 +489,7 @@ def process_cfportal(data, accession):
     return tables
 
 def process_d(data, accession):
+    """Return tables for Form D filings."""
     tables = []
     groups = [('contactData', 'contact_data_d'),
                 ('notificationAddressList', 'notification_address_list_d'),
@@ -505,6 +578,7 @@ def process_d(data, accession):
 #     return tables
 
 def process_npx(data, accession):
+    """Return tables for N-PX filings."""
     tables = []
     edgar_submission = safe_get(data, ['edgarSubmission'])
     if edgar_submission:
@@ -512,6 +586,7 @@ def process_npx(data, accession):
     return tables
 
 def process_proxy_voting_record(data, accession):
+    """Return tables for proxy voting record filings."""
     tables = []
     proxy_table = safe_get(data, ['proxyVoteTable', 'proxyTable'])
     if proxy_table:
@@ -548,6 +623,7 @@ def process_proxy_voting_record(data, accession):
 #     return tables
 
 def process_x17a5(data, accession):
+    """Return tables for X-17A-5 filings."""
     tables = []
     header_data = safe_get(data, ['edgarSubmission', 'headerData'])
     if header_data:
@@ -572,6 +648,7 @@ def process_x17a5(data, accession):
     return tables
 
 def process_schedule_13(data, accession):
+    """Return tables for Schedule 13D/13G filings."""
     tables = []
     header_data = safe_get(data, ['edgarSubmission', 'headerData'])
     if header_data:
@@ -598,6 +675,7 @@ def process_schedule_13(data, accession):
     return tables
 
 def process_reg_a(data, accession):
+    """Return tables for Regulation A filings."""
     tables = []
     header_data = safe_get(data, ['edgarSubmission', 'headerData'])
     if header_data:
@@ -662,6 +740,7 @@ def process_reg_a(data, accession):
 #     return tables
 
 def process_ex102_abs(data, accession):
+    """Return tables for EX-102 ABS filings."""
     tables = []
     data = safe_get(data, ['assetData', 'assets'])
     
@@ -710,6 +789,7 @@ def process_ex102_abs(data, accession):
 # WIP
 # Note: going to pause this for now, as I don't have a great way of putting this in a csv.
 def process_submission_metadata(data,accession):
+    """Return tables for submission metadata records."""
     tables = []
     document_data = safe_get(data, ['documents'])
     if document_data:
