@@ -1,3 +1,5 @@
+"""HTML section mapping dictionaries for SEC filings."""
+
 dict_10k_html = {
     ('part',r'^part\s*([ivx]+)$') : 0,
     ('signatures',r'^signatures?\.*$') : 0,
