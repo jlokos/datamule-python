@@ -1,13 +1,25 @@
-import os
+"""Query DataMule MySQL-backed APIs with pagination and cost tracking."""
+
+from __future__ import annotations
+
 import asyncio
-import aiohttp
 import json
+import os
 import ssl
 import time
+from typing import Any, Dict, List, Optional, Tuple
+
+import aiohttp
 from tqdm import tqdm
+
 from ..providers.providers import MAIN_API_ENDPOINT
+
+
 class DatamuleMySQL:
-    def __init__(self, api_key=None):
+    """Client for paginated queries against DataMule MySQL endpoints."""
+
+    def __init__(self, api_key: Optional[str] = None) -> None:
+        """Initialize with an optional API key."""
         self.API_BASE_URL = MAIN_API_ENDPOINT
         self._api_key = api_key
         self.total_cost = 0
@@ -15,16 +27,26 @@ class DatamuleMySQL:
         self.start_time = None
 
     @property
-    def api_key(self):
+    def api_key(self) -> Optional[str]:
+        """Return the API key from memory or environment."""
         return getattr(self, '_api_key', None) or os.getenv('DATAMULE_API_KEY')
 
     @api_key.setter
-    def api_key(self, value):
+    def api_key(self, value: str) -> None:
+        """Set the API key for authenticated requests."""
         if not value:
             raise ValueError("API key cannot be empty")
         self._api_key = value
 
-    async def _fetch_page(self, session, database, params, page=1, page_size=25000):
+    async def _fetch_page(
+        self,
+        session: aiohttp.ClientSession,
+        database: str,
+        params: Dict[str, Any],
+        page: int = 1,
+        page_size: int = 25000,
+    ) -> Tuple[List[Any], Dict[str, Any], float]:
+        """Fetch a single page of results and return data, pagination, and cost."""
         # Construct the URL with database name
         url = f"{self.API_BASE_URL}{database}"
         
@@ -61,7 +83,8 @@ class DatamuleMySQL:
                 result_data = result_data['data']
             return result_data, pagination, page_cost
 
-    async def execute_query(self, database,  **kwargs):
+    async def execute_query(self, database: str, **kwargs: Any) -> List[Any]:
+        """Execute a paginated query and return the aggregated results."""
         if self.api_key is None:
             raise ValueError("No API key found. Please set DATAMULE_API_KEY environment variable or provide api_key in constructor")
         
@@ -151,7 +174,8 @@ class DatamuleMySQL:
             return results
 
 
-def query_mysql_rds(database, api_key=None, **kwargs):
+def query_mysql_rds(database: str, api_key: Optional[str] = None, **kwargs: Any) -> List[Any]:
+    """Run a DataMule MySQL query using a short-lived client instance."""
 
     # Create a DatamuleMySQL instance for this request
     dm = DatamuleMySQL(api_key=api_key)
