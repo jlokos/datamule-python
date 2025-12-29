@@ -1,3 +1,5 @@
+"""Regex patterns for tag extraction and normalization."""
+
 # Exchange ticker regexes with word boundaries
 nyse_regex = r"\b([A-Z]{1,4})(\.[A-Z]+)?\b"
 nasdaq_regex = r"\b([A-Z]{1,5})(\.[A-Z]+)?\b"
