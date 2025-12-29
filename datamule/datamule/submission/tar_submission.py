@@ -1,11 +1,23 @@
-import zstandard as zstd
-from secsgml.utils import calculate_documents_locations_in_tar
-import tarfile
+"""Create compressed tar archives for submission documents."""
+
+from __future__ import annotations
+
 import io
 import json
+import tarfile
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple, Union
+
+import zstandard as zstd
+from secsgml.utils import calculate_documents_locations_in_tar
 
 
-def compress_content(content, compression_type, level, threshold):
+def compress_content(
+    content: Union[bytes, str],
+    compression_type: Optional[str],
+    level: Optional[int],
+    threshold: Optional[int],
+) -> bytes:
+    """Compress raw content when configured to use zstd."""
     if compression_type == 'zstd':
         # Handle string content
         if isinstance(content, str):
@@ -25,7 +37,13 @@ def compress_content(content, compression_type, level, threshold):
     return content
 
 
-def compress_content_list(document_tuple_list, compression_type, level, threshold):
+def compress_content_list(
+    document_tuple_list: Sequence[Tuple[Union[bytes, str], str]],
+    compression_type: Optional[str],
+    level: Optional[int],
+    threshold: Optional[int],
+) -> List[Tuple[bytes, str]]:
+    """Compress document content tuples when compression is enabled."""
     if compression_type is None:
         return document_tuple_list
     
@@ -40,7 +58,11 @@ def compress_content_list(document_tuple_list, compression_type, level, threshol
     return compressed_list
 
 
-def tar_content_list(metadata, document_tuple_list_compressed):
+def tar_content_list(
+    metadata: Dict[str, Any],
+    document_tuple_list_compressed: Sequence[Tuple[bytes, str]],
+) -> io.BytesIO:
+    """Create a tar buffer from metadata and compressed content tuples."""
     # Update metadata with compressed sizes
     for i, (content, accession) in enumerate(document_tuple_list_compressed):  
         metadata['documents'][i]['secsgml_size_bytes'] = len(content)
@@ -68,7 +90,13 @@ def tar_content_list(metadata, document_tuple_list_compressed):
     return tar_buffer
 
 
-def tar_submission(metadata, documents_obj_list, compression_type=None, level=None, threshold=None):
+def tar_submission(
+    metadata: Dict[str, Any],
+    documents_obj_list: Sequence[Any],
+    compression_type: Optional[str] = None,
+    level: Optional[int] = None,
+    threshold: Optional[int] = None,
+) -> io.BytesIO:
     """Takes a list of documents, compresses them (if above threshold), then tars them."""
     document_tuple_list = [(doc.content, doc.accession) for doc in documents_obj_list]
     document_tuple_list_compressed = compress_content_list(
