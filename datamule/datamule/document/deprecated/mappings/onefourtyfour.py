@@ -1,4 +1,31 @@
-securities_sold_in_past_3_months_144_dict = {
+"""
+Mappings for SEC Form 144 (Notice of Proposed Sale of Securities).
+
+This module contains dictionary mappings that define how raw SEC Form 144
+field names are transformed into standardized, human-readable field names.
+Form 144 is filed by affiliates and other restricted shareholders who intend
+to sell securities under Rule 144 of the Securities Act.
+
+Deprecated:
+    This module is deprecated. Use the updated mappings in the main
+    document module instead.
+
+Attributes:
+    securities_sold_in_past_3_months_144_dict (dict[str, str]):
+        Mapping for securities sold in the past 3 months section.
+    issuer_information_144_dict (dict[str, str]):
+        Mapping for issuer information section.
+    signatures_144_dict (dict[str, str]):
+        Mapping for signature section.
+    securities_to_be_sold_144_dict (dict[str, str]):
+        Mapping for securities to be sold section.
+    securities_information_144_dict (dict[str, str]):
+        Mapping for securities information section.
+    metadata_144_dict (dict[str, str]):
+        Mapping for form metadata section.
+"""
+
+securities_sold_in_past_3_months_144_dict: dict[str, str] = {
     'accession': 'accession',
     'sellerDetails_name': 'sellerName',
     'sellerDetails_address_street1': 'sellerStreet1',
@@ -11,7 +38,7 @@ securities_sold_in_past_3_months_144_dict = {
     'amountOfSecuritiesSold': 'securitiesSold',
     'grossProceeds': 'grossProceeds'
 }
-issuer_information_144_dict = {
+issuer_information_144_dict: dict[str, str] = {
     'accession': 'accession',
     'issuerCik': 'issuerCik',
     'issuerName': 'issuerName',
@@ -25,15 +52,13 @@ issuer_information_144_dict = {
     'nameOfPersonForWhoseAccountTheSecuritiesAreToBeSold': 'sellerName',
     'relationshipsToIssuer_relationshipToIssuer': 'sellerRelationship'
 }
-# Signatures_144 mapping
-signatures_144_dict = {
+signatures_144_dict: dict[str, str] = {
     'noticeDate': 'noticeDate',
     'planAdoptionDates_planAdoptionDate': 'planAdoptionDate',
     'signature': 'signature'
 }
 
-# Securities_to_be_sold_144 mapping
-securities_to_be_sold_144_dict = {
+securities_to_be_sold_144_dict: dict[str, str] = {
     'securitiesClassTitle': 'securitiesClass',
     'acquiredDate': 'acquiredDate',
     'natureOfAcquisitionTransaction': 'acquisitionNature',
@@ -44,8 +69,7 @@ securities_to_be_sold_144_dict = {
     'natureOfPayment': 'paymentNature'
 }
 
-# Securities_information_144 mapping
-securities_information_144_dict = {
+securities_information_144_dict: dict[str, str] = {
     'securitiesClassTitle': 'securitiesClass',
     'brokerOrMarketmakerDetails_name': 'brokerName',
     'brokerOrMarketmakerDetails_address_street1': 'brokerStreet',
@@ -59,8 +83,7 @@ securities_information_144_dict = {
     'securitiesExchangeName': 'exchangeName'
 }
 
-# Metadata_144 mapping
-metadata_144_dict = {
+metadata_144_dict: dict[str, str] = {
     'submissionType': 'submissionType',
     'filerInfo_filer_filerCredentials_cik': 'filerCik',
     'filerInfo_filer_filerCredentials_ccc': 'filerCcc',
