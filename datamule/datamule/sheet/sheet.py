@@ -1,26 +1,45 @@
-from pathlib import Path
+"""High-level sheet-like access to DataMule datasets."""
+
+from __future__ import annotations
+
 import csv
 import os
-from ..helper import _process_cik_and_metadata_filters
-from ..datamule.datamule_mysql_rds import query_mysql_rds
-from company_fundamentals.utils import get_fundamental_mappings
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
 from company_fundamentals import construct_fundamentals
-class Sheet: 
-    def __init__(self, path,api_key=None):
+from company_fundamentals.utils import get_fundamental_mappings
+
+from ..datamule.datamule_mysql_rds import query_mysql_rds
+from ..helper import _process_cik_and_metadata_filters
+
+
+class Sheet:
+    """Fetch and export DataMule tables to disk."""
+
+    def __init__(self, path: str, api_key: Optional[str] = None) -> None:
+        """Initialize a Sheet with an output path and optional API key."""
         self.path = Path(path)
         self._api_key = api_key
     
     @property
-    def api_key(self):
+    def api_key(self) -> Optional[str]:
+        """Return the API key from memory or environment."""
         return getattr(self, '_api_key', None) or os.getenv('DATAMULE_API_KEY')
 
     @api_key.setter
-    def api_key(self, value):
+    def api_key(self, value: str) -> None:
+        """Set the API key for authenticated requests."""
         if not value:
             raise ValueError("API key cannot be empty")
         self._api_key = value
     
-    def get_table(self, database, **kwargs):
+    def get_table(self, database: str, **kwargs: Any) -> Any:
+        """Return table data from the DataMule API.
+
+        If database is "fundamentals", this constructs a fundamentals view from
+        XBRL records using the selected mappings.
+        """
         if 'cik' in kwargs or 'ticker' in kwargs:
             # Get ticker and remove it from kwargs if present
             ticker = kwargs.pop('ticker', None)
@@ -70,7 +89,14 @@ class Sheet:
     #     # Download facts for all CIKs in parallel
     #     download_company_facts(cik=cik_list, output_dir=self.path)
 
-    def write_table(self, database, table=None, filename=None, **kwargs):
+    def write_table(
+        self,
+        database: str,
+        table: Optional[str] = None,
+        filename: Optional[str] = None,
+        **kwargs: Any,
+    ) -> None:
+        """Fetch a table and write it to a CSV file."""
         # Get the data using existing get_table method
         data = self.get_table(database=database, table=table, **kwargs)
         
@@ -90,7 +116,13 @@ class Sheet:
         
 
 
-    def _download_to_csv(self, data, filepath, verbose=False):
+    def _download_to_csv(
+        self,
+        data: List[Dict[str, Any]],
+        filepath: str,
+        verbose: bool = False,
+    ) -> List[Dict[str, Any]]:
+        """Write a list of dict rows to a CSV file."""
         # If no data returned, nothing to save
         if not data:
             if verbose:
