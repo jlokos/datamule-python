@@ -1,23 +1,31 @@
+"""Search helpers for SEC submissions."""
 
-from .sec.submissions.textsearch import query
-from .helper import _process_cik_and_metadata_filters
+from __future__ import annotations
+
 from pathlib import Path
+from typing import Any, Dict, Optional, Sequence, Union
+
+from .helper import _process_cik_and_metadata_filters
+from .sec.submissions.textsearch import query
 
 class Index:
-    def __init__(self):
+    """Convenience wrapper for text-based submission searches."""
+
+    def __init__(self) -> None:
+        """Create an Index instance."""
         pass
         
     def search_submissions(
         self,
-        text_query=None,
-        filing_date=None,
-        submission_type=None,
-        cik=None,
-        ticker=None,
-        requests_per_second=5.0,
-        quiet=True,
-        **kwargs
-    ):
+        text_query: Optional[str] = None,
+        filing_date: Optional[Union[str, Sequence[str]]] = None,
+        submission_type: Optional[str] = None,
+        cik: Optional[Union[str, int, Sequence[Union[str, int]]]] = None,
+        ticker: Optional[Union[str, Sequence[str]]] = None,
+        requests_per_second: float = 5.0,
+        quiet: bool = True,
+        **kwargs: Any,
+    ) -> Dict[str, Any]:
         """
         Search SEC filings for the given text query.
         
