@@ -1,15 +1,23 @@
+"""Download package datasets to the local user cache."""
 
-from pathlib import Path
-import urllib.request
+from __future__ import annotations
+
 import gzip
-import shutil
 import os
+import shutil
+import urllib.request
+from pathlib import Path
 
-class PackageUpdater():
-    def __init__(self):
+
+class PackageUpdater:
+    """Update cached package data files."""
+
+    def __init__(self) -> None:
+        """Initialize the updater."""
         pass
 
-    def update_package_data(self):
+    def update_package_data(self) -> None:
+        """Download and extract the listed_filer_metadata dataset."""
         # Create data directory in user's home
         data_dir = Path.home() / ".datamule"
         data_dir.mkdir(exist_ok=True)
