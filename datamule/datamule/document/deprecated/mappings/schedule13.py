@@ -1,3 +1,60 @@
+"""
+Deprecated field mappings for SEC Schedule 13 filings.
+
+This module contains dictionary mappings that translate raw SEC EDGAR field names
+to normalized field names for Schedule 13 (beneficial ownership) filings. These
+mappings are used when parsing Schedule 13D and Schedule 13G forms.
+
+.. deprecated::
+    This module is deprecated. Use the current mappings module instead.
+
+Dictionaries
+------------
+metadata_schedule_13_dict : dict[str, str]
+    Mappings for filing metadata fields including filer credentials and submission type.
+
+cover_schedule_13_dict : dict[str, str]
+    Mappings for cover page fields including issuer information, authorized persons,
+    and filing rules designation.
+
+reporting_person_details_schedule_13_dict : dict[str, str]
+    Mappings for reporting person details including ownership amounts, voting power,
+    and citizenship information.
+
+item_1_schedule_13_dict : dict[str, str]
+    Mappings for Item 1 fields (Security and Issuer).
+
+item_2_schedule_13_dict : dict[str, str]
+    Mappings for Item 2 fields (Identity and Background).
+
+item_3_schedule_13_dict : dict[str, str]
+    Mappings for Item 3 fields (Source and Amount of Funds).
+
+item_4_schedule_13_dict : dict[str, str]
+    Mappings for Item 4 fields (Purpose of Transaction).
+
+item_5_schedule_13_dict : dict[str, str]
+    Mappings for Item 5 fields (Interest in Securities of the Issuer).
+
+item_6_schedule_13_dict : dict[str, str]
+    Mappings for Item 6 fields (Contracts, Arrangements, Understandings).
+
+item_7_schedule_13_dict : dict[str, str]
+    Mappings for Item 7 fields (Material to be Filed as Exhibits).
+
+item_8_schedule_13_dict : dict[str, str]
+    Mappings for Item 8 fields (Identification and Classification of Group Members).
+
+item_9_schedule_13_dict : dict[str, str]
+    Mappings for Item 9 fields (Notice of Dissolution of Group).
+
+item_10_schedule_13_dict : dict[str, str]
+    Mappings for Item 10 fields (Certifications).
+
+signature_schedule_13_dict : dict[str, str]
+    Mappings for signature block fields including name, date, and title.
+"""
+
 metadata_schedule_13_dict = {
     'filerInfo_filer_filerCredentials_ccc': 'headerFilerCredentialsCcc',
     'filerInfo_filer_filerCredentials_cik': 'headerFilerCredentialsCik',
