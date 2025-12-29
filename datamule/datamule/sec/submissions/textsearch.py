@@ -1,16 +1,29 @@
+"""Text search utilities built on EFTS queries."""
+
+from __future__ import annotations
+
 import asyncio
+from typing import Any, Dict, List, Optional, Sequence, Union
+
 from .eftsquery import EFTSQuery
 
 class TextSearchEFTSQuery(EFTSQuery):
     """
     Extended EFTSQuery class that adds text search capabilities.
     """
-    def __init__(self, text_query, requests_per_second=5.0, quiet=False):
+    def __init__(self, text_query: Optional[str], requests_per_second: float = 5.0, quiet: bool = False) -> None:
         super().__init__(requests_per_second=requests_per_second, quiet=quiet)
         if text_query is not None:
             self.text_query = text_query
         
-    def _prepare_params(self, cik=None, submission_type=None, filing_date=None, location=None):
+    def _prepare_params(
+        self,
+        cik: Optional[Union[str, int, Sequence[Union[str, int]]]] = None,
+        submission_type: Optional[Union[str, Sequence[str]]] = None,
+        filing_date: Optional[Union[str, Sequence[str], tuple]] = None,
+        location: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Extend base parameters with a text query."""
         # Get base parameters from parent class
         params = super()._prepare_params(cik, submission_type, filing_date, location)
         
@@ -20,7 +33,7 @@ class TextSearchEFTSQuery(EFTSQuery):
         
         return params
 
-async def extract_accession_numbers(hits):
+async def extract_accession_numbers(hits: List[Dict[str, Any]]) -> List[str]:
     """
     Extract accession numbers from hits.
     
@@ -44,8 +57,16 @@ async def extract_accession_numbers(hits):
                 accession_numbers.append(acc_no)
     return accession_numbers
 
-def query(text_query=None, cik=None, submission_type=None, filing_date=None, location=None, 
-          name=None, requests_per_second=5.0, quiet=False):
+def query(
+    text_query: Optional[str] = None,
+    cik: Optional[Union[str, int, Sequence[Union[str, int]]]] = None,
+    submission_type: Optional[Union[str, Sequence[str]]] = None,
+    filing_date: Optional[Union[str, Sequence[str], tuple]] = None,
+    location: Optional[str] = None,
+    name: Optional[str] = None,
+    requests_per_second: float = 5.0,
+    quiet: bool = False,
+) -> List[Dict[str, Any]]:
     """
     Search SEC filings for text and return the full search results.
     
@@ -85,14 +106,23 @@ def query(text_query=None, cik=None, submission_type=None, filing_date=None, loc
     # Search for 'pandemic' in California companies' filings
     results = query('pandemic', location='CA', submission_type='8-K')
     """
-    async def run_query():
+    async def run_query() -> List[Dict[str, Any]]:
+        """Run the text search query asynchronously."""
         query = TextSearchEFTSQuery(text_query, requests_per_second=requests_per_second, quiet=quiet)
         return await query.query(cik, submission_type, filing_date, location, None, name)
     
     return asyncio.run(run_query())
 
-def filter_text(text_query, cik=None, submission_type=None, filing_date=None, location=None, 
-                name=None, requests_per_second=5.0, quiet=False):
+def filter_text(
+    text_query: str,
+    cik: Optional[Union[str, int, Sequence[Union[str, int]]]] = None,
+    submission_type: Optional[Union[str, Sequence[str]]] = None,
+    filing_date: Optional[Union[str, Sequence[str], tuple]] = None,
+    location: Optional[str] = None,
+    name: Optional[str] = None,
+    requests_per_second: float = 5.0,
+    quiet: bool = False,
+) -> List[str]:
     """
     Search SEC filings for text and return matching accession numbers.
     
@@ -133,13 +163,15 @@ def filter_text(text_query, cik=None, submission_type=None, filing_date=None, lo
     from .downloader import download
     download(name='Apple', accession_numbers=acc_numbers)
     """
-    async def run_query():
+    async def run_query() -> List[str]:
+        """Run the query and collect accession numbers."""
         query_obj = TextSearchEFTSQuery(text_query, requests_per_second=requests_per_second, quiet=quiet)
         
         # Create a collector for accession numbers
         all_acc_nos = []
         
-        async def collect_acc_nos(hits):
+        async def collect_acc_nos(hits: List[Dict[str, Any]]) -> None:
+            """Accumulate accession numbers from EFTS hits."""
             acc_nos = await extract_accession_numbers(hits)
             all_acc_nos.extend(acc_nos)
         
