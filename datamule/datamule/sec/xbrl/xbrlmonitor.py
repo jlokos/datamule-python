@@ -1,7 +1,10 @@
+"""Monitor the SEC XBRL RSS feed for new filings."""
+
 import asyncio
 import aiohttp
 import time
 from collections import deque
+from typing import Any, Callable, Dict, List, Optional
 from lxml import etree
 from ..utils import PreciseRateLimiter, headers
 
@@ -11,7 +14,7 @@ class XBRLMonitor:
     Polls https://www.sec.gov/Archives/edgar/xbrlrss.all.xml for new XBRL filings.
     """
     
-    def __init__(self, requests_per_second=2.0):
+    def __init__(self, requests_per_second: float = 2.0) -> None:
         """Initialize the XBRL Monitor."""
         self.url = "https://www.sec.gov/Archives/edgar/xbrlrss.all.xml"
         self.seen_accessions = deque(maxlen=2000)  # Store up to 2000 accession numbers
@@ -19,7 +22,7 @@ class XBRLMonitor:
         self.headers = headers
         self.running = False
     
-    async def _fetch_rss(self, session):
+    async def _fetch_rss(self, session: aiohttp.ClientSession) -> Optional[str]:
         """Fetch the XBRL RSS feed from SEC."""
         async with self.limiter:
             try:
@@ -30,7 +33,7 @@ class XBRLMonitor:
                 print(f"Error fetching RSS feed: {str(e)}")
                 return None
     
-    def _parse_rss(self, xml_content):
+    def _parse_rss(self, xml_content: str) -> List[Dict[str, str]]:
         """Parse the XBRL RSS feed XML content using lxml."""
         # Parse XML using lxml
         parser = etree.XMLParser(recover=True)
@@ -66,7 +69,11 @@ class XBRLMonitor:
         return entries
         
     
-    async def _poll_once(self, data_callback=None, quiet=True):
+    async def _poll_once(
+        self,
+        data_callback: Optional[Callable[[List[Dict[str, str]]], Any]] = None,
+        quiet: bool = True,
+    ) -> List[Dict[str, str]]:
         """Internal async implementation of poll_once."""
         if not quiet:
             print(f"Polling {self.url}")
@@ -94,14 +101,24 @@ class XBRLMonitor:
             
             return new_entries
     
-    def poll_once(self, data_callback=None, quiet=True):
+    def poll_once(
+        self,
+        data_callback: Optional[Callable[[List[Dict[str, str]]], Any]] = None,
+        quiet: bool = True,
+    ) -> List[Dict[str, str]]:
         """
         Poll the XBRL RSS feed once and process new filings.
         Synchronous wrapper around async implementation.
         """
         return asyncio.run(self._poll_once(data_callback, quiet))
     
-    async def _monitor(self, data_callback=None, poll_callback=None, polling_interval=600000, quiet=True):
+    async def _monitor(
+        self,
+        data_callback: Optional[Callable[[List[Dict[str, str]]], Any]] = None,
+        poll_callback: Optional[Callable[[], Any]] = None,
+        polling_interval: int = 600000,
+        quiet: bool = True,
+    ) -> None:
         """Internal async implementation of monitor."""
         self.running = True
         while self.running:
@@ -126,7 +143,13 @@ class XBRLMonitor:
                 print(f"Error in monitoring: {str(e)}")
                 await asyncio.sleep(polling_interval / 1000)
     
-    def monitor(self, data_callback=None, poll_callback=None, polling_interval=600000, quiet=True):
+    def monitor(
+        self,
+        data_callback: Optional[Callable[[List[Dict[str, str]]], Any]] = None,
+        poll_callback: Optional[Callable[[], Any]] = None,
+        polling_interval: int = 600000,
+        quiet: bool = True,
+    ) -> None:
         """
         Continuously poll the XBRL RSS feed at the specified interval.
         Synchronous wrapper around async implementation.
@@ -138,6 +161,6 @@ class XBRLMonitor:
             quiet=quiet
         ))
     
-    def stop(self):
+    def stop(self) -> None:
         """Stop the continuous polling."""
         self.running = False
