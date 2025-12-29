@@ -1,3 +1,5 @@
+"""XML section mapping dictionaries for SEC filings."""
+
 dict_345 = {
     "transformations": [
         {
