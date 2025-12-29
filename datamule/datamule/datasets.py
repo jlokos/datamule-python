@@ -1,4 +1,4 @@
-# datamule/datasets.py
+"""Dataset download helpers and cached dataset access."""
 from pathlib import Path
 import requests
 import gzip
