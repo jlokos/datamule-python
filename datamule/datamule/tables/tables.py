@@ -1,15 +1,21 @@
-from .tables_ownership import config_ownership
+"""Parse and map structured tables from SEC filings."""
+
+from __future__ import annotations
+
+import re
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+
+from doc2dict.utils.format_dict import _format_table
+
 from .tables_13fhr import config_13fhr
-from .tables_informationtable import config_information_table
 from .tables_25nse import config_25nse
+from .tables_informationtable import config_information_table
 from .tables_npx import config_npx
+from .tables_ownership import config_ownership
+from .tables_proxyvotingrecord import config_proxyvotingrecord
 from .tables_sbsef import config_sbsef
 from .tables_sdr import config_sdr
-from .tables_proxyvotingrecord import config_proxyvotingrecord
-from doc2dict.utils.format_dict import _format_table
- 
-from .utils import safe_get, flatten_dict
-import re
+from .utils import flatten_dict, safe_get
 # will add filing date param later? or extension
 all_tables_dict = {
     '3' : config_ownership,
@@ -42,7 +48,8 @@ all_tables_dict = {
 # process d
 # 144
 
-def seperate_data(tables_dict, data):
+def seperate_data(tables_dict: Dict[str, Dict[str, Any]], data: Dict[str, Any]) -> List[Tuple[str, Any]]:
+    """Extract each table section based on configured paths."""
     data_list = []
     
     for table_name, config in tables_dict.items():
@@ -66,7 +73,12 @@ def seperate_data(tables_dict, data):
     
     return data_list
 
-def apply_mapping(flattened_data, mapping_dict, accession, must_exist_in_mapping=False):
+def apply_mapping(
+    flattened_data: Any,
+    mapping_dict: Dict[str, str],
+    accession: str,
+    must_exist_in_mapping: bool = False,
+) -> List[Dict[str, Any]]:
     """Apply mapping to flattened data and add accession"""
     
     # Handle case where flattened_data is a list of dictionaries
@@ -95,7 +107,16 @@ def apply_mapping(flattened_data, mapping_dict, accession, must_exist_in_mapping
 
 # TODO, move from dict {} to [[]]
 class Table:
-    def __init__(self,data,name,accession,description = None):
+    """Represents a single parsed table."""
+
+    def __init__(
+        self,
+        data: List[Dict[str, Any]],
+        name: str,
+        accession: str,
+        description: Optional[str] = None,
+    ) -> None:
+        """Initialize a table with rows, name, and accession."""
         self.data = data
         if data != []:
             try:
@@ -107,7 +128,8 @@ class Table:
         self.description = description
 
     # TODO MADE IN A HURRY #
-    def __str__(self):
+    def __str__(self) -> str:
+        """Return a formatted string representation of the table."""
         formatted_table = _format_table(self.data)
         if isinstance(formatted_table, list):
             table_str = '\n'.join(formatted_table)
@@ -117,12 +139,16 @@ class Table:
 
 
 class Tables():
-    def __init__(self,document_type,accession):
+    """Collection of tables parsed from a document."""
+
+    def __init__(self, document_type: str, accession: str) -> None:
+        """Initialize with the document type and accession."""
         self.document_type = document_type
         self.accession = accession
-        self.tables = []
+        self.tables: List[Table] = []
 
-    def parse_tables(self,data,must_exist_in_mapping=True):
+    def parse_tables(self, data: Dict[str, Any], must_exist_in_mapping: bool = True) -> None:
+        """Parse and map tables from structured data."""
         self.data = data
 
         try:
@@ -141,10 +167,17 @@ class Tables():
             mapped_data = apply_mapping(flattened_data, mapping_dict, self.accession,must_exist_in_mapping)
             self.tables.append(Table(mapped_data, table_name, self.accession))
         
-    def add_table(self,data,name,description=None):
+    def add_table(self, data: List[Dict[str, Any]], name: str, description: Optional[str] = None) -> None:
+        """Add a table to the collection."""
         self.tables.append(Table(data=data,name=name,accession=self.accession,description=description))
 
-    def get_tables(self, description_regex=None, name=None, contains_regex=None):
+    def get_tables(
+        self,
+        description_regex: Optional[str] = None,
+        name: Optional[str] = None,
+        contains_regex: Optional[Sequence[str]] = None,
+    ) -> List[Table]:
+        """Return tables matching name, description, or content patterns."""
         matching_tables = []
         
         for table in self.tables:
@@ -172,7 +205,8 @@ class Tables():
         
         return matching_tables
 
-    def _check_contains_regex(self, table, contains_regex):
+    def _check_contains_regex(self, table: Table, contains_regex: Sequence[str]) -> bool:
+        """Return True when all regex patterns are found in table cells."""
         # Convert all patterns to compiled regex objects
         compiled_patterns = [re.compile(pattern) for pattern in contains_regex]
         
