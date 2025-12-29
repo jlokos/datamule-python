@@ -1,3 +1,5 @@
+"""Query helpers for SEC BigQuery datasets."""
+
 import os
 import requests
 import json
