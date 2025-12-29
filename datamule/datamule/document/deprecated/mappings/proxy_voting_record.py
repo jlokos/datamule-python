@@ -1,3 +1,5 @@
+"""Proxy voting record mapping dictionary (deprecated)."""
+
 proxy_voting_record_dict = {
     'meetingDate': 'meetingDate',
     'accession': 'accessionNumber',
