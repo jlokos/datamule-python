@@ -199,6 +199,10 @@ portfolio.stream_submissions(data_callback=data_callback)
 
 Iterate through documents in a portfolio based on type.
 
+## API reference
+
+::: datamule.portfolio.portfolio.Portfolio
+
 ### Example
 ```python
 for document in portfolio.document_type('10-K'):
