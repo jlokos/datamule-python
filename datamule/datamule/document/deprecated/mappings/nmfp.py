@@ -1,12 +1,41 @@
-# N-MFP Metadata mapping
-metadata_nmfp_dict = {
+"""
+N-MFP (Money Market Fund Reporting) field mapping dictionaries.
+
+This module contains dictionaries that map SEC N-MFP form XML field names to their
+corresponding normalized/simplified key names. N-MFP is a monthly portfolio reporting
+form required for money market funds registered under the Investment Company Act of 1940.
+
+The mappings are organized by section of the N-MFP form:
+- metadata_nmfp_dict: Filer information and submission metadata
+- general_information_nmfp_dict: Fund identification and general details
+- series_level_info_nmfp_dict: Series-level financial and operational data
+- class_level_info_nmfp_dict: Share class-level information
+- schedule_of_portfolio_securities_info_nmfp_dict: Individual security holdings
+- signature_nmfp_dict: Filing signature information
+
+Note:
+    This module is deprecated. Use the current mapping implementations instead.
+
+Example:
+    The mappings translate verbose XML field paths to cleaner keys::
+
+        # Original XML path
+        'filerInfo_filer_filerCredentials_cik'
+        # Maps to
+        'filerCik'
+"""
+
+from typing import Dict
+
+#: Mapping of N-MFP metadata fields (filer credentials and submission type).
+metadata_nmfp_dict: Dict[str, str] = {
     'filerInfo_filer_filerCredentials_ccc': 'filerCcc',
     'filerInfo_filer_filerCredentials_cik': 'filerCik',
     'submissionType': 'submissionType'
 }
 
-# N-MFP General Information mapping
-general_information_nmfp_dict = {
+#: Mapping of N-MFP general information fields (fund identification, registration, and status).
+general_information_nmfp_dict: Dict[str, str] = {
     'acquiredMergedFund': 'acquiredMergedFund',
     'acquiredMergedFund_cik': 'acquiredMergedFundCik',
     'acquiredMergedFund_fileNumber': 'acquiredMergedFundFileNumber',
@@ -28,8 +57,8 @@ general_information_nmfp_dict = {
     'totalShareClassesInSeries': 'totalShareClassesInSeries'
 }
 
-# N-MFP Series Level Info mapping
-series_level_info_nmfp_dict = {
+#: Mapping of N-MFP series-level information fields (fund characteristics, NAV, liquidity metrics).
+series_level_info_nmfp_dict: Dict[str, str] = {
     'administrator': 'administrator',
     'administrator_administratorName': 'administratorName',
     'adviser': 'adviser',
@@ -117,8 +146,8 @@ series_level_info_nmfp_dict = {
     'transferAgent_name': 'transferAgentName'
 }
 
-# N-MFP Class Level Info mapping
-class_level_info_nmfp_dict = {
+#: Mapping of N-MFP class-level information fields (share class details, yields, shareholder flows).
+class_level_info_nmfp_dict: Dict[str, str] = {
     'beneficialRecordOwnerCategory': 'beneficialRecordOwnerCategory',
     'beneficialRecordOwnerCategory_beneficialRecordOwnerCategoryType': 'beneficialRecordOwnerCategoryType',
     'beneficialRecordOwnerCategory_otherInvestorCategory': 'otherInvestorCategory',
@@ -174,8 +203,8 @@ class_level_info_nmfp_dict = {
     'totalForTheMonthReported_weeklyGrossSubscriptions': 'totalMonthlyWeeklyGrossSubscriptions'
 }
 
-# N-MFP Schedule of Portfolio Securities Info mapping
-schedule_of_portfolio_securities_info_nmfp_dict = {
+#: Mapping of N-MFP portfolio securities schedule fields (security identifiers, ratings, collateral).
+schedule_of_portfolio_securities_info_nmfp_dict: Dict[str, str] = {
     'CUSIPMember': 'cusipMember',
     'ISINId': 'isinId',
     'LEIID': 'leiId',
@@ -265,8 +294,8 @@ schedule_of_portfolio_securities_info_nmfp_dict = {
     'yieldOfTheSecurityAsOfReportingDate': 'yieldOfTheSecurityAsOfReportingDate'
 }
 
-# N-MFP Signature mapping
-signature_nmfp_dict = {
+#: Mapping of N-MFP signature fields (signing officer and filing attestation).
+signature_nmfp_dict: Dict[str, str] = {
     'nameOfSigningOfficer': 'nameOfSigningOfficer',
     'registrant': 'registrant',
     'signature': 'signature',
