@@ -1,3 +1,5 @@
+"""13F information table mapping definitions."""
+
 information_table_dict = {
     'nameOfIssuer': 'nameOfIssuer',
     'titleOfClass': 'titleOfClass',
