@@ -1,3 +1,19 @@
+"""
+Deprecated table module for SEC filing data transformation and export.
+
+This module provides the Table class for handling tabular data extracted from
+SEC filings. It supports column mapping based on filing type, data transformation,
+and CSV export functionality.
+
+.. deprecated::
+    This module is deprecated. Use the newer document handling utilities instead.
+
+Note:
+    This module imports mapping dictionaries from various submodules to support
+    different SEC filing types including ATS-N, CFPORTAL, NMFP, NPX, ownership
+    forms, Schedule 13, Form D, and others.
+"""
+
 from .mappings.atsn import *
 from .mappings.cfportal import *
 from .mappings.ex99a_sdr import *
@@ -23,33 +39,104 @@ from .mappings.ex102_abs import *
 from .mappings.d import *
 
 from pathlib import Path
+from typing import Any, Dict, List, Union
 import csv
-class Table():
-    def __init__(self, data, type,accession):
-        if isinstance(data,dict):
+
+
+class Table:
+    """
+    Represents tabular data extracted from SEC filings with column mapping support.
+
+    This class handles the storage, transformation, and export of structured data
+    from various SEC filing types. It applies type-specific column mappings to
+    standardize field names and supports CSV output.
+
+    Attributes:
+        type: The filing type identifier (e.g., 'metadata_ats', 'ownership').
+        data: List of dictionaries containing the row data.
+        accession: The SEC accession number for the filing.
+        columns: List of column names present in the data.
+
+    .. deprecated::
+        This class is deprecated. Use newer document handling utilities instead.
+    """
+
+    def __init__(
+        self,
+        data: Union[Dict[str, Any], List[Dict[str, Any]]],
+        type: str,
+        accession: str,
+    ) -> None:
+        if isinstance(data, dict):
             data = [data]
         self.type = type
         self.data = data
         self.accession = accession
         self.columns = self.determine_columns_complete()
 
-    def determine_columns_complete(self):
+    def determine_columns_complete(self) -> List[str]:
+        """
+        Determine all unique column names across all rows in the data.
+
+        Collects column names from every row and returns a deduplicated list,
+        ensuring no columns are missed even if some rows have different fields.
+
+        Returns:
+            List of unique column names found across all data rows.
+        """
         if not self.data:
             return []
         return list(set().union(*(row.keys() for row in self.data)))
 
+    def determine_columns(self) -> List[str]:
+        """
+        Determine column names from the first row of data.
 
-    def determine_columns(self):
+        Returns:
+            List of column names from the first row, or empty list if no data.
+
+        Note:
+            This method only examines the first row. Use determine_columns_complete()
+            to get all columns across all rows.
+        """
         if len(self.data) == 0:
             return []
-        
+
         return self.data[0].keys()
 
-    def add_column(self,column_name,value):
+    def add_column(self, column_name: str, value: Any) -> None:
+        """
+        Add a new column with a constant value to all rows.
+
+        Args:
+            column_name: The name of the new column to add.
+            value: The value to set for this column in all rows.
+        """
         for row in self.data:
             row[column_name] = value
 
-    def map_data(self):
+    def map_data(self) -> None:
+        """
+        Apply type-specific column mappings to standardize field names.
+
+        This method transforms the data by renaming columns according to the
+        mapping dictionary corresponding to the table's filing type. It also
+        adds the accession number as the first column in each row.
+
+        The method modifies the data in place, updating both the row dictionaries
+        and the columns attribute to reflect the new field names.
+
+        Supported filing types include:
+            - ATS-N forms (metadata_ats, cover_ats, part_one_ats, etc.)
+            - CFPORTAL forms (metadata_cfportal, identifying_information_cfportal, etc.)
+            - NMFP forms (metadata_nmfp, general_information_nmfp, etc.)
+            - NPX forms
+            - Form 144 (signatures_144, securities_sold_in_past_3_months_144, etc.)
+            - Ownership forms (non_derivative_holding_ownership, etc.)
+            - Schedule 13 forms
+            - Form D forms
+            - 13F-HR, 25-NSE, 24F-2NT, and other SEC form types
+        """
         # Add the accession column to all rows first, ensuring it will be first
         self.add_column('accession', self.accession)
 
@@ -296,10 +383,22 @@ class Table():
 
         self.columns = list(columns)
 
-    def write_csv(self, output_file):
+    def write_csv(self, output_file: Union[str, Path]) -> None:
+        """
+        Write the table data to a CSV file.
+
+        If the output file already exists, data is appended without rewriting
+        the header. If the file does not exist, a new file is created with
+        a header row followed by the data rows.
+
+        All values are quoted in the output CSV (using csv.QUOTE_ALL).
+
+        Args:
+            output_file: Path to the output CSV file. Can be a string or Path object.
+        """
         output_file = Path(output_file)
         fieldnames = self.columns
-        
+
         # Check if the file already exists
         if output_file.exists():
             # Append to existing file without writing header
