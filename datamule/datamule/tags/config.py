@@ -1,3 +1,5 @@
+"""Configuration for loading and managing tag dictionaries."""
+
 from .dictionaries import download_dictionary, load_dictionary
 
 _active_dictionaries = []
