@@ -1,27 +1,54 @@
-from pathlib import Path
+"""Load and work with SEC submission metadata and documents.
+
+This module provides the `Submission` class for loading a single filing from a
+local path, a tar archive, raw SGML bytes, or a remote URL. It also exposes a
+lazy fundamentals accessor built on top of inline XBRL parsing.
+
+Example:
+    >>> from datamule.submission import Submission
+    >>> sub = Submission(path="/data/0000320193-23-000077")
+    >>> list(sub.document_type("10-K"))[0].type
+    '10-K'
+"""
+
+from __future__ import annotations
+
 import json
-from ..document.document import Document
+import tarfile
+import urllib.request
+from decimal import Decimal
+from io import BytesIO
+from pathlib import Path
+from typing import Any, Dict, Iterable, Iterator, List, Optional, Sequence, Union
+
+import zstandard as zstd
+from company_fundamentals import construct_fundamentals
 from secsgml import parse_sgml_content_into_memory
 from secsgml.parse_sgml import transform_metadata_string
 from secsgml.utils import bytes_to_str
-from ..sec.utils import headers
-import tarfile
-import urllib.request
 from secxbrl import parse_inline_xbrl
-from company_fundamentals import construct_fundamentals
-from decimal import Decimal
+
+from ..document.document import Document
+from ..sec.utils import headers
 from ..utils.format_accession import format_accession
 from .tar_submission import tar_submission
-import zstandard as zstd
 
 # probably needs rework later
 class FundamentalsAccessor:
-    def __init__(self, submission):
+    """Lazy accessor for XBRL fundamentals on a submission.
+
+    Attributes:
+        submission (Submission): Parent submission used to compute fundamentals.
+    """
+
+    def __init__(self, submission: Submission) -> None:
+        """Initialize the accessor with its parent submission."""
         self.submission = submission
-        self._cache = {}
-        self._all_data = None
+        self._cache: Dict[str, Any] = {}
+        self._all_data: Optional[Dict[str, Any]] = None
     
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> Any:
+        """Return a fundamentals category or attribute from the cached data."""
         # Try as category first
         try:
             if name not in self._cache:
@@ -35,34 +62,79 @@ class FundamentalsAccessor:
         # Fall back to dict behavior
         return getattr(self._get_all_data(), name)
     
-    def _get_all_data(self):
+    def _get_all_data(self) -> Dict[str, Any]:
+        """Load and cache all fundamentals data."""
         if self._all_data is None:
             self._all_data = self.submission.parse_fundamentals(categories=None)
         return self._all_data
     
     # Make the accessor behave like the underlying data
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> Any:
+        """Return a fundamentals entry by key."""
         return self._get_all_data()[key]
     
-    def __repr__(self):
+    def __repr__(self) -> str:
+        """Return the repr of the underlying fundamentals mapping."""
         return repr(self._get_all_data())
     
-    def __str__(self):
+    def __str__(self) -> str:
+        """Return the string form of the underlying fundamentals mapping."""
         return str(self._get_all_data())
     
-    def __iter__(self):
+    def __iter__(self) -> Iterator[str]:
+        """Iterate over fundamentals keys."""
         return iter(self._get_all_data())
     
-    def __len__(self):
+    def __len__(self) -> int:
+        """Return the number of fundamentals categories."""
         return len(self._get_all_data()) if self._get_all_data() else 0
     
-    def __bool__(self):
+    def __bool__(self) -> bool:
+        """Return True when any fundamentals data exists."""
         return bool(self._get_all_data())
 
 class Submission:
-    def __init__(self, path=None, sgml_content=None, keep_document_types=None,
-                 batch_tar_path=None, accession=None, portfolio_ref=None,url=None):
-        
+    """Represents a single SEC submission and its documents.
+
+    A Submission can be created from a local directory or tar file, raw SGML
+    bytes, a batch tar archive, or a remote URL.
+
+    Attributes:
+        accession (str): Accession number without dashes.
+        metadata (Document): Submission metadata document.
+        filing_date (str): Filing date in YYYY-MM-DD format.
+        path (Optional[Path]): Local path for directory or tar inputs.
+        batch_tar_path (Optional[str]): Batch tar path when using portfolio access.
+        portfolio_ref (Optional[Any]): Portfolio reference for batch tar access.
+    """
+
+    def __init__(
+        self,
+        path: Optional[Union[Path, str]] = None,
+        sgml_content: Optional[bytes] = None,
+        keep_document_types: Optional[Sequence[str]] = None,
+        batch_tar_path: Optional[str] = None,
+        accession: Optional[str] = None,
+        portfolio_ref: Optional[Any] = None,
+        url: Optional[str] = None,
+    ) -> None:
+        """Initialize a Submission from a single input source.
+
+        Args:
+            path: Path to a submission directory or `.tar` archive.
+            sgml_content: Raw SGML bytes for a submission.
+            keep_document_types: Optional list of document types to keep when
+                loading from SGML content.
+            batch_tar_path: Batch tar path when using portfolio access.
+            accession: Accession number, required for `sgml_content` and batch tar use.
+            portfolio_ref: Portfolio object that manages batch tar handles/locks.
+            url: HTTP(S) URL to a submission SGML file.
+
+        Raises:
+            ValueError: If none or more than one source input is provided.
+            ValueError: If `batch_tar_path` is set without `accession` or `portfolio_ref`.
+            ValueError: If `sgml_content` or `url` is used without `accession`.
+        """
         # get accession number
         # lets just use accesion-prefix, to get around malformed metadata files (1995 has a lot!)
         if path is not None:
@@ -203,8 +275,18 @@ class Submission:
         
 
     # TODO rework for better metadata accessing
-    def _load_document_by_index(self, idx):
-        """Load a document by its index in the metadata documents list."""
+    def _load_document_by_index(self, idx: int) -> Document:
+        """Load a document by its index in the metadata documents list.
+
+        Args:
+            idx: Index into `metadata.content['documents']`.
+
+        Returns:
+            Document instance populated with content and metadata.
+
+        Raises:
+            FileNotFoundError: If the document is missing on disk or in a tar archive.
+        """
         doc = self.metadata.content['documents'][idx]
         
         # If loaded from sgml_content, return pre-loaded document
@@ -262,13 +344,21 @@ class Submission:
             accession=self.accession,
             path=document_path
         )
-    def __iter__(self):
-        """Make Submission iterable by yielding all documents."""
+
+    def __iter__(self) -> Iterator[Document]:
+        """Yield all documents in this submission."""
         for idx in range(len(self.metadata.content['documents'])):
             yield self._load_document_by_index(idx)
 
-    def document_type(self, document_type):
-        """Yield documents matching the specified type(s)."""
+    def document_type(self, document_type: Union[str, Iterable[str]]) -> Iterator[Document]:
+        """Yield documents matching one or more SEC document types.
+
+        Args:
+            document_type: A single document type string or an iterable of types.
+
+        Yields:
+            Matching Document instances.
+        """
         # Convert single document type to list for consistent handling
         if isinstance(document_type, str):
             document_types = [document_type]
@@ -279,7 +369,8 @@ class Submission:
             if doc['type'] in document_types:
                 yield self._load_document_by_index(idx)
 
-    def parse_xbrl(self):
+    def parse_xbrl(self) -> None:
+        """Parse inline XBRL content for this submission (cached)."""
         if self._xbrl:
             return
         
@@ -299,12 +390,21 @@ class Submission:
                 return
 
     @property
-    def xbrl(self): 
+    def xbrl(self) -> Optional[List[Dict[str, Any]]]:
+        """Return parsed inline XBRL data, parsing on first access."""
         if self._xbrl is None:
             self.parse_xbrl()
         return self._xbrl
         
-    def parse_fundamentals(self, categories=None):
+    def parse_fundamentals(self, categories: Optional[Sequence[str]] = None) -> Optional[Dict[str, Any]]:
+        """Return fundamentals derived from inline XBRL data.
+
+        Args:
+            categories: Optional list of category names to limit the output.
+
+        Returns:
+            A fundamentals mapping, or None if no XBRL data is available.
+        """
         # Create cache key based on categories
         categories_key = tuple(sorted(categories)) if categories else 'all'
         
@@ -381,22 +481,41 @@ class Submission:
         return fundamentals
 
     @property
-    def fundamentals(self):
-        """Access fundamentals via attributes: sub.fundamentals.incomeStatement"""
+    def fundamentals(self) -> FundamentalsAccessor:
+        """Access fundamentals via attribute access on a lazy accessor.
+
+        Example:
+            >>> sub = Submission(path="/data/0000320193-23-000077")
+            >>> sub.fundamentals.incomeStatement  # doctest: +SKIP
+        """
         if not hasattr(self, '_fundamentals_accessor'):
             self._fundamentals_accessor = FundamentalsAccessor(self)
         return self._fundamentals_accessor
     
     @property
-    def tar(self):
+    def tar(self) -> bytes:
+        """Return a tar archive of the submission as bytes (cached)."""
         return self._tar_submission().getvalue()
     
-    def set_tar_compression(self,compression_type='zstd',level=3,threshold=None):
+    def set_tar_compression(
+        self,
+        compression_type: Optional[str] = 'zstd',
+        level: int = 3,
+        threshold: Optional[int] = None,
+    ) -> None:
+        """Configure compression for tar output.
+
+        Args:
+            compression_type: Compression type (currently supports 'zstd' or None).
+            level: Compression level for zstd.
+            threshold: Minimum size in bytes before compression is applied.
+        """
         self._tar_compression_type = compression_type
         self._tar_compression_level = level
         self._tar_compression_threshold = threshold
     
-    def _tar_submission(self):
+    def _tar_submission(self) -> BytesIO:
+        """Build and cache a tar buffer for this submission."""
         if self._tar is not None:
             return self._tar
         else:
@@ -411,28 +530,32 @@ class Submission:
             return self._tar
         
     @property
-    def accession_year_2d(self):
+    def accession_year_2d(self) -> str:
+        """Return the two-digit year from the accession number."""
         return self._get_accession_year_2d()
     
-    def _get_accession_year_2d(self):
+    def _get_accession_year_2d(self) -> str:
+        """Compute and cache the two-digit accession year."""
         if self._accession_year_2d is not None:
             return self._accession_year_2d
         self._accession_year_2d = format_accession(self.accession,'dash').split('-')[1]
         return self._accession_year_2d
     
     @property
-    def documents(self):
+    def documents(self) -> List[Dict[str, Any]]:
+        """Return the metadata document entries for this submission."""
         return self._get_documents()
     
-    def _get_documents(self):
+    def _get_documents(self) -> List[Dict[str, Any]]:
+        """Load and cache the metadata document list."""
         if self._documents is not None:
             return self._documents
         
         self._documents = self.metadata.content['documents']
         return self._documents
 
-    def _get_documents_obj_list(self):
-        """Get all documents as Document objects"""
+    def _get_documents_obj_list(self) -> List[Document]:
+        """Return all documents as Document objects."""
         if hasattr(self, 'documents_obj_list'):
             return self.documents_obj_list
         
