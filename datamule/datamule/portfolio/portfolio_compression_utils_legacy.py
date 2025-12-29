@@ -1,9 +1,12 @@
+"""Legacy compression utilities for portfolio batch archives."""
+
 import json
 import io
 import gzip
 import zstandard as zstd
 import tarfile
 import shutil
+from typing import Any, Optional
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from secsgml.utils import bytes_to_str, calculate_documents_locations_in_tar
@@ -12,8 +15,17 @@ from secsgml.utils import bytes_to_str, calculate_documents_locations_in_tar
 
 
 class CompressionManager:
+    """Legacy helpers for compressing and expanding portfolio batches."""
     
-    def compress_portfolio(self, portfolio, compression=None, compression_level=None, threshold=1048576, max_batch_size=1024*1024*1024, max_workers=None):
+    def compress_portfolio(
+        self,
+        portfolio: Any,
+        compression: Optional[str] = None,
+        compression_level: Optional[int] = None,
+        threshold: int = 1048576,
+        max_batch_size: int = 1024 * 1024 * 1024,
+        max_workers: Optional[int] = None,
+    ) -> None:
         """
         Compress all individual submissions into batch tar files.
         
@@ -117,7 +129,7 @@ class CompressionManager:
         
         print("Compression complete.")
 
-    def decompress_portfolio(self, portfolio, max_workers=None):
+    def decompress_portfolio(self, portfolio: Any, max_workers: Optional[int] = None) -> None:
         """
         Decompress all batch tar files back to individual submission directories.
         
