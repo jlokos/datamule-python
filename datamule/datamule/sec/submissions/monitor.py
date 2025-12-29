@@ -1,17 +1,51 @@
+"""
+SEC submissions monitoring module.
+
+This module provides functionality to monitor SEC EDGAR filings in real-time
+by combining RSS feed polling with EFTS (Electronic Filing and Transfer System)
+validation. It tracks new submissions and can backfill historical data.
+
+Classes:
+    Monitor: Main class for monitoring SEC submissions.
+
+Functions:
+    poll_rss: Polls the SEC RSS feed for recent submissions.
+    clean_efts_hits: Cleans and standardizes EFTS query results.
+"""
+
 import time
 from collections import deque
 from datetime import datetime
 import xml.etree.ElementTree as ET
 import re
 import asyncio
+from typing import Any, Callable, Optional
+
 from ..utils import headers, PreciseRateLimiter
 from .eftsquery import EFTSQuery
 import aiohttp
 from zoneinfo import ZoneInfo 
 
-async def poll_rss(limiter, session):
+async def poll_rss(limiter: PreciseRateLimiter, session: aiohttp.ClientSession) -> list[dict[str, Any]]:
+    """
+    Poll the SEC RSS feed for recent submissions.
+
+    Fetches the latest 100 submissions from the SEC EDGAR RSS feed and parses
+    them into a structured format. Submissions are grouped by accession number.
+
+    Args:
+        limiter: Rate limiter to control request frequency to SEC servers.
+        session: aiohttp client session for making HTTP requests.
+
+    Returns:
+        A list of dictionaries, each containing:
+            - accession (int): The accession number as an integer.
+            - submission_type (str): The type of SEC filing.
+            - ciks (list[str]): List of CIK numbers associated with the filing.
+            - filing_date (str): The filing date in YYYY-MM-DD format.
+    """
     base_url = 'https://www.sec.gov/cgi-bin/browse-edgar?count=100&action=getcurrent&output=rss'
-    
+
     # Use the rate limiter before making the request
     async with limiter:
         # Use the provided session instead of creating a new one
@@ -44,7 +78,24 @@ async def poll_rss(limiter, session):
     results = [{'accession': int(k.replace('-', '')), 'submission_type': v['submission_type'], 'ciks': list(v['ciks']), 'filing_date': v['filing_date']} for k, v in grouped.items()]
     return results
 
-def clean_efts_hits(hits):
+def clean_efts_hits(hits: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """
+    Clean and standardize EFTS query results.
+
+    Processes raw EFTS search hits into a standardized format with consistent
+    CIK formatting (leading zeros removed).
+
+    Args:
+        hits: Raw search results from EFTS query, each containing '_source'
+            with 'adsh', 'file_date', 'ciks', and 'file_type' fields.
+
+    Returns:
+        A list of cleaned dictionaries, each containing:
+            - accession (int): The accession number as an integer.
+            - filing_date (str): The filing date.
+            - ciks (list[str]): Standardized CIK numbers (no leading zeros).
+            - submission_type (str): The type of SEC filing.
+    """
     # clean hits and standardize CIKs to string(int)
     cleaned_hits = []
     for hit in hits:
@@ -63,6 +114,7 @@ def clean_efts_hits(hits):
     return cleaned_hits
 
 class Monitor():
+    """Monitor SEC submissions via RSS polling and EFTS validation."""
     def __init__(self):
         self.accessions = deque(maxlen=50000)
         self.accessions_set = set()
@@ -73,7 +125,8 @@ class Monitor():
         self.session_created_at = 0
         self.session_lifetime = 300  # 5 minutes in seconds
 
-    def set_domain_rate_limit(self, domain, rate):
+    def set_domain_rate_limit(self, domain: str, rate: float) -> None:
+        """Set the per-domain request rate limit."""
         self.ratelimiters[domain] = PreciseRateLimiter(rate=rate)
         if domain == 'sec.gov':
             self.efts_query.limiter = self.ratelimiters[domain]
