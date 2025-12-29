@@ -1,3 +1,5 @@
+"""CFPORTAL mapping dictionaries (deprecated)."""
+
 # CFPORTAL Metadata mapping
 metadata_cfportal_dict = {
     'filerInfo_filer_fileNumber': 'fileNumber',
