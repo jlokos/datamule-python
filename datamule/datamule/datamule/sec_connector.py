@@ -1,12 +1,22 @@
-import os
+"""WebSocket connector for SEC live updates via DataMule."""
+
+from __future__ import annotations
+
 import json
-import urllib.request
-import websocket
+import os
 import re
+import urllib.request
+from typing import Any, Callable, List, Optional, Tuple
+
+import websocket
+
 from ..providers.providers import MAIN_API_ENDPOINT
 
 class SecConnector:
-    def __init__(self, api_key=None, quiet=False):
+    """Connect to the DataMule SEC WebSocket stream."""
+
+    def __init__(self, api_key: Optional[str] = None, quiet: bool = False) -> None:
+        """Initialize the connector with an API key and verbosity control."""
         self.api_key = api_key or os.getenv('DATAMULE_API_KEY')
         if not self.api_key:
             raise ValueError("API key not found. Set DATAMULE_API_KEY or provide api_key parameter.")
@@ -14,7 +24,8 @@ class SecConnector:
         self.quiet = quiet
         self.auth_url = MAIN_API_ENDPOINT
         
-    def _get_jwt_token_and_ip(self):
+    def _get_jwt_token_and_ip(self) -> Tuple[str, str]:
+        """Request a JWT token and websocket IP for the stream."""
         if not self.quiet:
             print("Getting JWT token...")
             
@@ -39,18 +50,21 @@ class SecConnector:
             
         return data['token'], data['websocket_ip']
     
-    def connect(self, data_callback=None):
+    def connect(self, data_callback: Optional[Callable[[List[Any]], None]] = None) -> None:
+        """Connect to the WebSocket and stream data to a callback."""
         token, websocket_ip = self._get_jwt_token_and_ip()
         ws_url = f"ws://{websocket_ip}:8080/ws?token={token}"
         
         if not self.quiet:
             print("Connecting to WebSocket...")
         
-        def on_open(ws):
+        def on_open(ws: websocket.WebSocketApp) -> None:
+            """Log the websocket open event."""
             if not self.quiet:
                 print("WebSocket connected")
         
-        def on_message(ws, message):
+        def on_message(ws: websocket.WebSocketApp, message: str) -> None:
+            """Handle incoming websocket messages."""
             response = json.loads(message)
             data = response.get('data', [])
             if not self.quiet:
@@ -58,12 +72,18 @@ class SecConnector:
             if data_callback:
                 data_callback(data) 
         
-        def on_error(ws, error):
+        def on_error(ws: websocket.WebSocketApp, error: Exception) -> None:
+            """Handle websocket errors with sanitization."""
             if not self.quiet:
                 sanitized_error = self._sanitize_error_message(str(error))
                 print(f"WebSocket error: {sanitized_error}")
         
-        def on_close(ws, close_status_code, close_msg):
+        def on_close(
+            ws: websocket.WebSocketApp,
+            close_status_code: Optional[int],
+            close_msg: Optional[str],
+        ) -> None:
+            """Log the websocket close event."""
             if not self.quiet:
                 print("WebSocket closed")
         
@@ -81,7 +101,8 @@ class SecConnector:
         
         ws.run_forever()
     
-    def _sanitize_error_message(self, error_msg):
+    def _sanitize_error_message(self, error_msg: str) -> str:
+        """Remove sensitive tokens from error messages."""
         sensitive_patterns = [
             r'Bearer\s+[A-Za-z0-9\-_\.]+',     # Bearer tokens
             r'api_key[=:]\s*[A-Za-z0-9\-_]+',  # API key patterns
