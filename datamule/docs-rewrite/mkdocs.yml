@@ -43,3 +43,14 @@ markdown_extensions:
   - def_list
   - admonition
   - pymdownx.details
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths:
+            - ".."
+          options:
+            docstring_style: google
+            show_source: false
