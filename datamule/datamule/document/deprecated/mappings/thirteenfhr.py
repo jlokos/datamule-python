@@ -1,7 +1,37 @@
-# Ready for mass testing
+"""Field mapping dictionary for SEC Form 13F-HR filings.
 
-# 13F-HR (Institutional Investment Manager Holdings) mapping
-thirteenfhr_dict =  {
+This module provides a mapping dictionary for transforming nested field paths
+from SEC Form 13F-HR (Institutional Investment Manager Holdings Report) filings
+into simplified, flat field names.
+
+The 13F-HR form is required to be filed quarterly by institutional investment
+managers who exercise investment discretion over $100 million or more in
+Section 13(f) securities.
+
+The mapping covers:
+    - Cover Page fields (filing manager info, report type, amendments)
+    - Other Managers Info (CIK, name, CRD number, file numbers)
+    - Summary Page fields (confidential omissions, manager counts, totals)
+    - Signature Block fields (name, title, phone, signature, date)
+    - Header Data fields (period of report, filer credentials, flags)
+    - Schema and Metadata fields (schema location, version, accession)
+
+Deprecated:
+    This module is deprecated. Use the updated mapping system instead.
+
+Example:
+    >>> from datamule.document.deprecated.mappings.thirteenfhr import thirteenfhr_dict
+    >>> original_key = 'formData_coverPage_filingManager_name'
+    >>> simplified_key = thirteenfhr_dict[original_key]
+    >>> print(simplified_key)
+    'filingManagerName'
+"""
+
+from typing import Dict
+
+#: Field mapping dictionary for 13F-HR (Institutional Investment Manager Holdings) filings.
+#: Maps nested field paths to simplified flat field names.
+thirteenfhr_dict: Dict[str, str] = {
     # Cover Page Mapping
     'formData_coverPage_reportCalendarOrQuarter': 'reportCalendarOrQuarter',
     'formData_coverPage_filingManager_name': 'filingManagerName',
