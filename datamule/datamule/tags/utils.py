@@ -1,9 +1,16 @@
+"""Regex and keyword utilities for tagging document text."""
+
+from __future__ import annotations
+
 import re
-from .regex import cusip_regex, isin_regex, figi_regex, ticker_regex_list
-from .regex import particles
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+
 from flashtext import KeywordProcessor
 
-def get_cusip_using_regex(text,keywords=None):
+from .regex import cusip_regex, figi_regex, isin_regex, particles, ticker_regex_list
+
+def get_cusip_using_regex(text: str, keywords: Optional[Iterable[str]] = None) -> List[Tuple[str, int, int]]:
+    """Return CUSIP matches and their positions."""
     matches = []
     for match in re.finditer(cusip_regex, text):
         if keywords is not None:
@@ -13,7 +20,8 @@ def get_cusip_using_regex(text,keywords=None):
             matches.append((match.group(), match.start(), match.end()))
     return matches
 
-def get_isin_using_regex(text,keywords=None):
+def get_isin_using_regex(text: str, keywords: Optional[Iterable[str]] = None) -> List[Tuple[str, int, int]]:
+    """Return ISIN matches and their positions."""
     matches = []
     for match in re.finditer(isin_regex, text):
         if keywords is not None:
@@ -23,7 +31,8 @@ def get_isin_using_regex(text,keywords=None):
             matches.append((match.group(), match.start(), match.end()))
     return matches
 
-def get_figi_using_regex(text,keywords=None):
+def get_figi_using_regex(text: str, keywords: Optional[Iterable[str]] = None) -> List[Tuple[str, int, int]]:
+    """Return FIGI matches and their positions."""
     matches = []
     for match in re.finditer(figi_regex, text):
         if keywords is not None:
@@ -33,7 +42,7 @@ def get_figi_using_regex(text,keywords=None):
             matches.append((match.group(), match.start(), match.end()))
     return matches
 
-def get_tickers_using_regex(text, regex_pattern):
+def get_tickers_using_regex(text: str, regex_pattern: str) -> List[Tuple[str, int, int]]:
     """Extract tickers using the given regex pattern with position information"""
     matches = []
     for match in re.finditer(regex_pattern, text):
@@ -45,7 +54,7 @@ def get_tickers_using_regex(text, regex_pattern):
         matches.append((ticker, match.start(), match.end()))
     return matches
 
-def get_all_tickers(text):
+def get_all_tickers(text: str) -> Dict[str, List[Tuple[str, int, int]]]:
     """Get all tickers from all exchanges organized by exchange with position info"""
     result = {}
     all_tickers = []
@@ -62,12 +71,13 @@ def get_all_tickers(text):
     
     return result
 
-def get_ticker_regex_dict():
+def get_ticker_regex_dict() -> Dict[str, str]:
     """Return ticker regex list as a dictionary for easy lookup"""
     return dict(ticker_regex_list)
 
 # will change in future to accomodate other datasets
-def validate_full_name(full_name, keywords):
+def validate_full_name(full_name: Sequence[str], keywords: Optional[Iterable[str]]) -> bool:
+    """Validate a candidate full name extracted from text."""
     if len(full_name) == 1:
         return False
     
@@ -94,7 +104,8 @@ def validate_full_name(full_name, keywords):
     
     return True
 
-def get_full_names(text,keywords=None):
+def get_full_names(text: str, keywords: Optional[Iterable[str]] = None) -> List[Tuple[str, int, int]]:
+    """Return full-name matches with position offsets."""
     words = text.split()
     full_names = []
     current_pos = None
@@ -140,7 +151,7 @@ def get_full_names(text,keywords=None):
     return full_names
 
 # add dictionary lookup based on precomputed lists
-def get_full_names_dictionary_lookup(text, processor):
+def get_full_names_dictionary_lookup(text: str, processor: KeywordProcessor) -> List[Tuple[str, int, int]]:
     """Use pre-built KeywordProcessor instead of creating new one"""
     matches = []
     keywords_found = processor.extract_keywords(text, span_info=True)
@@ -151,7 +162,8 @@ def get_full_names_dictionary_lookup(text, processor):
     return matches
 
 
-def create_lm_processors(lm_dict):
+def create_lm_processors(lm_dict: Dict[str, Iterable[str]]) -> Dict[str, KeywordProcessor]:
+    """Build keyword processors for Loughran-McDonald categories."""
     processors = {}
     
     for category_key, word_set in lm_dict.items():
@@ -162,7 +174,7 @@ def create_lm_processors(lm_dict):
     
     return processors
 
-def analyze_lm_sentiment_fragment(text, processors):
+def analyze_lm_sentiment_fragment(text: str, processors: Dict[str, KeywordProcessor]) -> Dict[str, Any]:
     """Analyze sentiment for a single text fragment"""
     if not text or not text.strip():
         return {}
