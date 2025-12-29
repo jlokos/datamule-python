@@ -1,3 +1,5 @@
+"""Ownership form mapping table definitions."""
+
 # Non-derivative transaction ownership mapping
 non_derivative_transaction_mapping = {
     'securityTitle_value': 'securityTitle',
