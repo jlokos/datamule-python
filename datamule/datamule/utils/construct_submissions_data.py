@@ -1,3 +1,5 @@
+"""Build submissions data extracts from SEC bulk ZIP archives."""
+
 import zipfile
 import json
 import csv
