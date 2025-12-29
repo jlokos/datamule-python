@@ -1,3 +1,5 @@
+"""SDR form mapping table definitions."""
+
 sdr_dict = {
     'formData_generalInfo_applicantCategory_applcntTypeConfFlag': 'applicantTypeConfFlag',
     'formData_generalInfo_applicantCategory_applicantType': 'applicantType',
