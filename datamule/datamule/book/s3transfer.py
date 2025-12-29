@@ -1,13 +1,20 @@
+"""Asynchronous transfer helpers for DataMule filings to S3."""
+
+from __future__ import annotations
+
 import asyncio
-import aiohttp
-import aioboto3
+import json
+import logging
 import ssl
 import time
-import json
 from datetime import datetime, timedelta
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple, Union
 from urllib.parse import urlparse
+
+import aiohttp
+import aioboto3
 from tqdm import tqdm
-import logging
+
 from ..sheet.sheet import Sheet
 from ..utils.format_accession import format_accession
 
@@ -19,7 +26,8 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def generate_date_range(start_date_str, end_date_str):
+def generate_date_range(start_date_str: str, end_date_str: str) -> List[str]:
+    """Return a list of YYYY-MM-DD strings between two dates inclusive."""
     start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
     end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
     
@@ -33,7 +41,14 @@ def generate_date_range(start_date_str, end_date_str):
     return dates
 
 
-def get_filings_sgml_r2_urls(submission_type=None, cik=None, datamule_api_key=None, filing_date=None,accession_number=None):
+def get_filings_sgml_r2_urls(
+    submission_type: Optional[str] = None,
+    cik: Optional[str] = None,
+    datamule_api_key: Optional[str] = None,
+    filing_date: Optional[str] = None,
+    accession_number: Optional[str] = None,
+) -> List[str]:
+    """Return SGML URLs for filings matching the provided filters."""
     datamule_bucket_endpoint = 'https://sec-library.datamule.xyz/'
     sheet = Sheet('s3transfer')
     submissions = sheet.get_submissions(distinct=True, quiet=False, api_key=datamule_api_key,
@@ -48,12 +63,21 @@ def get_filings_sgml_r2_urls(submission_type=None, cik=None, datamule_api_key=No
 
 
 class AsyncS3Transfer:
-    def __init__(self, s3_credentials, max_workers=100, chunk_size=2*1024*1024):
+    """Asynchronous S3 transfer helper for batch downloads."""
+
+    def __init__(
+        self,
+        s3_credentials: Dict[str, Any],
+        max_workers: int = 100,
+        chunk_size: int = 2 * 1024 * 1024,
+    ) -> None:
+        """Initialize with S3 credentials and concurrency settings."""
         self.s3_credentials = s3_credentials
         self.max_workers = max_workers
         self.chunk_size = chunk_size
         
-    async def __aenter__(self):
+    async def __aenter__(self) -> "AsyncS3Transfer":
+        """Open HTTP and S3 clients."""
         # Create aiohttp session with optimized connector
         connector = aiohttp.TCPConnector(
             limit=self.max_workers,
@@ -87,13 +111,19 @@ class AsyncS3Transfer:
             
         return self
     
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+        """Close HTTP and S3 clients."""
         if hasattr(self, 'session') and self.session:
             await self.session.close()
         if hasattr(self, 's3_client') and self.s3_client:
             await self.s3_client.__aexit__(exc_type, exc_val, exc_tb)
 
-    async def transfer_single_file(self, semaphore, url, retry_errors=3):
+    async def transfer_single_file(
+        self,
+        semaphore: asyncio.Semaphore,
+        url: str,
+        retry_errors: int = 3,
+    ) -> Dict[str, Any]:
         """Transfer a single file with retry logic and preserve metadata"""
         async with semaphore:
             filename = urlparse(url).path.split('/')[-1]
@@ -167,7 +197,11 @@ class AsyncS3Transfer:
                 'size_bytes': 0
             }
 
-    async def transfer_batch(self, urls, retry_errors=3):
+    async def transfer_batch(
+        self,
+        urls: Sequence[str],
+        retry_errors: int = 3,
+    ) -> Tuple[List[Dict[str, Any]], int]:
         """Transfer multiple files concurrently"""
         semaphore = asyncio.Semaphore(self.max_workers)
         failed_files = []
@@ -199,9 +233,13 @@ class AsyncS3Transfer:
         return failed_files, total_bytes
 
 
-async def async_transfer_cached_urls_to_s3(urls, s3_credentials, max_workers=4, 
-                                         errors_json_filename='s3_transfer_errors.json', 
-                                         retry_errors=3):
+async def async_transfer_cached_urls_to_s3(
+    urls: Sequence[str],
+    s3_credentials: Dict[str, Any],
+    max_workers: int = 4,
+    errors_json_filename: str = 's3_transfer_errors.json',
+    retry_errors: int = 3,
+) -> None:
     """Async version of transfer_cached_urls_to_s3"""
     failed_files = []
     total_bytes = 0
@@ -218,13 +256,31 @@ async def async_transfer_cached_urls_to_s3(urls, s3_credentials, max_workers=4,
         print(f"Transfer complete: {len(urls) - len(failed_files)}/{len(urls)} files successful")
 
 
-def transfer_cached_urls_to_s3(urls, s3_credentials, max_workers=4, errors_json_filename='s3_transfer_errors.json', retry_errors=3):
+def transfer_cached_urls_to_s3(
+    urls: Sequence[str],
+    s3_credentials: Dict[str, Any],
+    max_workers: int = 4,
+    errors_json_filename: str = 's3_transfer_errors.json',
+    retry_errors: int = 3,
+) -> None:
     """Wrapper to run async transfer in sync context"""
     asyncio.run(async_transfer_cached_urls_to_s3(urls, s3_credentials, max_workers, errors_json_filename, retry_errors))
 
 
-def s3_transfer(datamule_bucket, s3_credentials, max_workers=4, errors_json_filename='s3_transfer_errors.json', retry_errors=3,
-                force_daily=True, cik=None, submission_type=None, filing_date=None, datamule_api_key=None,accession_number=None):
+def s3_transfer(
+    datamule_bucket: str,
+    s3_credentials: Dict[str, Any],
+    max_workers: int = 4,
+    errors_json_filename: str = 's3_transfer_errors.json',
+    retry_errors: int = 3,
+    force_daily: bool = True,
+    cik: Optional[str] = None,
+    submission_type: Optional[str] = None,
+    filing_date: Optional[Union[str, List[str], Tuple[str, str]]] = None,
+    datamule_api_key: Optional[str] = None,
+    accession_number: Optional[str] = None,
+) -> None:
+    """Transfer filings from a DataMule bucket to S3 storage."""
 
     if datamule_bucket in ['filings_sgml_r2','sec_filings_sgml_r2']:
 
