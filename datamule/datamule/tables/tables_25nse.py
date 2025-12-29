@@ -1,3 +1,5 @@
+"""Form 25-NSE mapping table definitions."""
+
 twentyfive_nse_dict = {
     'descriptionClassSecurity': 'securityDescription',
     'exchange_cik': 'exchangeCik',
