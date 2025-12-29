@@ -1,3 +1,5 @@
+"""Public package exports and notebook environment setup."""
+
 from .submission.submission import Submission
 from .portfolio.portfolio import Portfolio
 from .document.document import Document
