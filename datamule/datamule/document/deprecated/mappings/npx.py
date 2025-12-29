@@ -1,3 +1,5 @@
+"""N-PX mapping dictionary (deprecated)."""
+
 # N-PX form mapping
 npx_dict = {
     'accession': 'accession',
